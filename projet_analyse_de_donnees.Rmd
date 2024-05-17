@@ -110,16 +110,36 @@ library(corrplot)
 ```
 
 ```{r}
-corrplot(correlation, method = "color", type = "upper", order = "hclust", tl.col = "black", tl.srt = 90, tl.cex = 0.7)
+corrplot(correlation, method = "ellipse", type = "upper", order = "hclust", tl.col = "black", tl.srt = 90, tl.cex = 0.7)
 
 ```
 
 
+On remarque que les variables sont très corrélées entre elles. Il faudra faire attention à la multicollinéarité lors de la modélisation.    
+ 
+On affiche les variables avec un coefficient de corrélation supérieur à 0.7.
 
 
+```{r}
+# Fonction chipée sur internet https://rpubs.com/sediaz/Correlations 
+corr_check <- function(Dataset, threshold){
+  matriz_cor <- cor(Dataset)
+  matriz_cor
 
+  for (i in 1:nrow(matriz_cor)){
+    correlations <-  which((abs(matriz_cor[i,i:ncol(matriz_cor)]) > threshold) & (matriz_cor[i,i:ncol(matriz_cor)] != 1))
+  
+    if(length(correlations)> 0){
+      lapply(correlations,FUN =  function(x) (cat(paste(colnames(Dataset)[i], "with",colnames(Dataset)[x]), "\n")))
+     
+    }
+  }
+}
+```
 
-
+```{r}
+corr_check(data[2:31], 0.95)
+```
 
 
 
