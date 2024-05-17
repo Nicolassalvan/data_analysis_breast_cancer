@@ -1,0 +1,129 @@
+---
+title: "Projet - Breast Cancer Analysis"
+author: "Nicolas SALVAN - Alexandre CORRIOU"
+date: "2024-05-17"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# Lecture des données
+
+## Importation du dataset 
+
+```{r}
+data <- read.csv("breast-cancer.csv", header = TRUE, sep = ",")
+```
+
+## Affichage des premières lignes
+
+```{r}
+head(data)
+```
+
+## Affichage des dimensions
+
+```{r}
+dim(data)
+```
+## Affichage des types de données
+
+```{r}
+str(data)
+```
+
+
+## Conversion des données qualitatives en factor
+
+```{r}
+data$diagnosis <- as.factor(data$diagnosis)
+str(data)
+```
+
+
+
+
+## Nettoyage 
+
+```{r}
+# suppression des NaNs
+data <- na.omit(data)
+
+# suppression des colonnes inutiles : identifiant de la patiente 
+data <- data[,-c(1)]
+head(data)
+```
+
+
+
+# Statistiques descriptives
+
+## Résumé des données
+
+```{r}
+summary(data)
+```
+
+## Distribution des données
+
+
+### Distribution des diagnostics
+
+```{r}
+table(data$diagnosis)
+```
+
+
+```{r}
+barplot(table(data$diagnosis))
+```
+
+```{r}
+prop.table(table(data$diagnosis))
+```
+
+
+
+### Distribution des variables
+
+```{r}
+par(mfrow = c(3,3))
+for(i in 2:31){
+  hist(data[,i], main = colnames(data)[i], xlab = colnames(data)[i], col = "blue")
+}
+```
+
+## Matrice de corrélation
+
+```{r}
+correlation <- cor(data[2:31])
+```
+
+
+La matrice est illisible, nous devons installer un package pour la rendre plus lisible.
+```{r}
+install.packages("corrplot")
+library(corrplot)
+```
+
+```{r}
+corrplot(correlation, method = "color", type = "upper", order = "hclust", tl.col = "black", tl.srt = 90, tl.cex = 0.7)
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
