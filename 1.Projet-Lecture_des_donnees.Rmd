@@ -1,0 +1,73 @@
+---
+title: "Projet.1.Lecture-Des-Donnees"
+author: "Nicolas SALVAN - Alexandre CORRIOU"
+date: "2024-05-17"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Lecture des données
+
+Notre jeu de données contient des informations sur des patientes atteintes d'un cancer du sein. Nous allons commencer par lire les données et les afficher pour mieux les comprendre. Ce fichier contient le code pour *pré-traiter les données*.
+
+## Importation du dataset 
+
+```{r}
+data <- read.csv("data/breast-cancer.csv", header = TRUE, sep = ",")
+```
+
+## Affichage des premières lignes
+
+```{r}
+head(data)
+```
+
+On observe qu'il y a une variable qualitative "diagnosis" qui correspond au diagnostic de la patiente. Toutes les autres variables sont quantitatives, et décrives les caractéristiques du cancer. 
+
+## Affichage des dimensions
+
+```{r}
+dim(data)
+```
+Notre jeu de données contient 569 observations et 32 variables. 
+
+## Affichage des types des variables 
+
+```{r}
+str(data)
+```
+
+## Conversion des données qualitatives en factor
+
+On observe que la variable "diagnosis" est de type "chr". Nous allons la convertir en facteur pour faciliter l'analyse.
+
+```{r}
+data$diagnosis <- as.factor(data$diagnosis)
+str(data)
+```
+
+Tous les types de variables semblent corrects.
+
+## Nettoyage 
+
+Certaines variables sont inutilisables, comme l'identifiant de la patiente. Nous allons les supprimer. Il nous faut également supprimer les NaNs pour éviter les erreurs dans les analyses.
+
+```{r}
+# suppression des NaNs
+data <- na.omit(data)
+
+# suppression des colonnes inutiles : identifiant de la patiente 
+data <- data[,-c(1)]
+head(data)
+```
+
+## Exportation des données 
+
+Nous allons exporter les données nettoyées pour les utiliser dans les analyses suivantes. 
+
+```{r}
+write.csv(data, "data/data_cleaned.csv", row.names = FALSE)
+```
