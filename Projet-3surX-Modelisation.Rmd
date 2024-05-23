@@ -1,0 +1,39 @@
+---
+title: "Projet - 3surX - Modélisation"
+author: "Nicolas SALVAN - Alexandre CORRIOU"
+date: "2024-05-23"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Ce document contient le code pour *modéliser les données*. 
+
+# Lecture des données nettoyées 
+
+## Importation du dataset 
+
+```{r}
+data <- read.csv("data/data_cleaned.csv", header = TRUE, sep = ",")
+data$diagnosis <- as.factor(data$diagnosis)
+
+train_data <- read.csv("data/train_data.csv", header = TRUE, sep = ",")
+train_data$diagnosis <- as.factor(train_data$diagnosis)
+
+test_data <- read.csv("data/test_data.csv", header = TRUE, sep = ",")
+test_data$diagnosis <- as.factor(test_data$diagnosis)
+```
+
+## Aperçu rapide 
+
+```{r}
+head(data)
+# dim(data)
+# str(data)
+```
+
+
+
+
