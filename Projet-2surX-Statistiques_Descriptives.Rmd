@@ -1,0 +1,129 @@
+---
+title: "Projet - 2surX - Statistiques Descriptives"
+author: "Nicolas SALVAN - Alexandre CORRIOU"
+date: "2024-05-17"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Ce fichier contient le code pour réaliser les *statistiques descriptives* sur les données nettoyées. 
+
+# Lecture des données nettoyées 
+
+## Importation du dataset 
+
+```{r}
+data <- read.csv("data/data_cleaned.csv", header = TRUE, sep = ",")
+data$diagnosis <- as.factor(data$diagnosis)
+```
+
+## Aperçu rapide 
+
+```{r}
+head(data)
+# dim(data)
+# str(data)
+```
+
+# Statistiques descriptives
+
+Nous allons maintenant réaliser des statistiques descriptives sur les données nettoyées.
+
+## Résumé des données
+
+```{r}
+summary(data)
+```
+Le jeu de données contient 569 observations et 31 variables. On observe qu'il y a une variable qualitative "diagnosis" qui correspond au diagnostic de la patiente. Toutes les autres variables sont quantitatives, et décrivent les caractéristiques du cancer détecté. 
+
+Cette sortie nous donne quelques statistiques descriptives sur nos données, notamment les moyennes, les médianes, les minimums et maximums, et les quartiles.
+
+## Distribution des données
+
+Observons la distribution des différentes variables. 
+
+
+### Distribution des diagnostics (variable qualitative)
+
+```{r}
+counts <- table(data$diagnosis)
+bp <- barplot(counts, 
+              main = "Distribution des diagnostics", 
+              xlab = "Diagnostic", 
+              ylab = "Nombre de patientes", 
+              col = c("lightblue", "pink"), 
+              legend = rownames(counts))
+
+# Ajouter les labels au-dessus des barres
+text(x = bp, y = counts, labels = counts, pos = 1, cex = 0.8, col = "black")
+```
+Ici, on peut voir les effectifs des deux diagnostics possibles : "M" pour "Malignant" ou Malin en français, et "B" pour "Benign" ou bénin. 
+
+```{r}
+proportions <- prop.table(table(data$diagnosis))
+proportions
+```  
+On observe que 63% des patientes ont un diagnostic bénin, et 37% un diagnostic malin. Il faut avoir cela en tête lorsque l'on étudiera notre jeu de données. 
+
+### Distribution des variables
+
+```{r}
+par(mfrow = c(3,3))
+for(i in 2:31){
+  hist(data[,i], main = colnames(data)[i], xlab = colnames(data)[i], col = "blue")
+}
+```
+
+
+## Matrice de corrélation
+
+```{r}
+# install.packages("corrplot")
+library("corrplot")
+```
+
+```{r}
+correlation <- cor(data[2:31])
+```
+
+```{r}
+corrplot(correlation, method = "ellipse", type = "upper", order = "hclust", tl.col = "black", tl.srt = 90, tl.cex = 0.7)
+
+```
+
+
+On remarque que les variables sont très corrélées entre elles. Il faudra faire attention à la multicollinéarité lors de la modélisation.    
+ 
+On affiche les variables avec un coefficient de corrélation supérieur à 0.98.
+
+```{r}
+# Fonction carrément volée sur internet https://rpubs.com/sediaz/Correlations 
+corr_check <- function(Dataset, threshold){
+  matriz_cor <- cor(Dataset)
+  matriz_cor
+
+  for (i in 1:nrow(matriz_cor)){
+    correlations <-  which((abs(matriz_cor[i,i:ncol(matriz_cor)]) > threshold) & (matriz_cor[i,i:ncol(matriz_cor)] != 1))
+  
+    if(length(correlations)> 0){
+      lapply(correlations,FUN =  function(x) (cat(paste(colnames(Dataset)[i], "with",colnames(Dataset)[x]), "\n")))
+     
+    }
+  }
+}
+```
+
+```{r}
+corr_check(data[2:31], 0.98)
+```
+
+On remarque que les colonnes liées sont le rayon, le périmètre, l'aire. On va supprimer le périmètre car, de part la forme circulaire des cancers, il peut être calculé comme étant 2 * pi * rayon. On devrait pouvoir l'observer dans les prochaines étapes de notre analyse. 
+
+
+# Conclusion 
+
+Nous avons réalisé des statistiques descriptives sur notre jeu de données nettoyé. Nous avons pu observer la distribution des diagnostics, et des différentes variables. Nous avons également étudié la corrélation entre les variables, et avons identifié des variables fortement corrélées, qui devraient être prises en compte lors de la modélisation. 
+

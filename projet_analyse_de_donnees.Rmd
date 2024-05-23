@@ -118,11 +118,10 @@ corrplot(correlation, method = "ellipse", type = "upper", order = "hclust", tl.c
 
 On remarque que les variables sont très corrélées entre elles. Il faudra faire attention à la multicollinéarité lors de la modélisation.    
  
-On affiche les variables avec un coefficient de corrélation supérieur à 0.95.
-
+On affiche les variables avec un coefficient de corrélation supérieur à 0.98.
 
 ```{r}
-# Fonction chipée sur internet https://rpubs.com/sediaz/Correlations 
+# Fonction carrément volée sur internet https://rpubs.com/sediaz/Correlations 
 corr_check <- function(Dataset, threshold){
   matriz_cor <- cor(Dataset)
   matriz_cor
@@ -144,21 +143,21 @@ corr_check(data[2:31], 0.98)
 On remarque que les colonnes liées sont le rayon, le périmètre, l'aire. On va supprimer le périmètre car, de part la forme circulaire des cancers, il peut être calculé comme étant 2 * pi * rayon. 
 
 ```{r}
-data <- data[,-c(4, 14, 24)]
-head(data)
+#data <- data[,-c(4, 14, 24)]
+# head(data)
 ```
 
 
 ```{r}
-correlation <- cor(data[2:28])
-check_corr <- corr_check(data[2:28], 0.98)
+#correlation <- cor(data[2:28])
+# check_corr <- corr_check(data[2:28], 0.98)
 ```
-On supprime area_mean car elle est corrélée avec radius_mean et radius_worst. 
+On supprime area_mean car elle est corrélée avec radius_mean et radius_worst. (Idée nuuuuuuullleeeeee) 
 
 
 ```{r}
-data <- data[,-c(4)]
-head(data)
+# data <- data[,-c(4)]
+# head(data)
 ```
 
 # Modélisation
@@ -191,6 +190,11 @@ train_data <- data_split$train_data
 test_data <- data_split$test_data
 
 ```
+
+```{r}
+
+```
+
 
 
 ## AFD 
