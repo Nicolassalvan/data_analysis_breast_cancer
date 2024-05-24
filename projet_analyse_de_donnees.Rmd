@@ -207,6 +207,9 @@ library("FactoMineR")
 ```{r}
 res.pca <- PCA(data[2:27], scale.unit = TRUE, graph = FALSE)
 ```
+```{r}
+res.pca
+```
 
 
 

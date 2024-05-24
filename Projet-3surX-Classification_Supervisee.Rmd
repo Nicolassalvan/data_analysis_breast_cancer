@@ -68,14 +68,6 @@ mean(pred_afd$class == test_data$diagnosis) # accuracy
 
 On obtient une accuracy de 0.92, ce qui est plutôt bon. 
 
-### Amélioration du modèle
-
-On peut essayer de trouver les variables les plus discriminantes pour améliorer le modèle. 
-
-```{r}
-plot(afd_lda_model)
-```
-
 
 ### Séléction des variables
 
