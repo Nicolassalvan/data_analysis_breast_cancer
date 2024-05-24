@@ -1,0 +1,92 @@
+---
+title: "Projet - 3surX - Classification Supervisée"
+author: "Nicolas SALVAN - Alexandre CORRIOU"
+date: "2024-05-23"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Ce document contient le code pour *modéliser les données*. Nous allons réaliser de l'apprentissage supervisé pour prédire le diagnostic des patientes. 
+
+# Lecture des données nettoyées 
+
+## Importation du dataset 
+
+```{r}
+data <- read.csv("data/data_cleaned.csv", header = TRUE, sep = ",")
+data$diagnosis <- as.factor(data$diagnosis)
+
+train_data <- read.csv("data/train_data.csv", header = TRUE, sep = ",")
+train_data$diagnosis <- as.factor(train_data$diagnosis)
+
+test_data <- read.csv("data/test_data.csv", header = TRUE, sep = ",")
+test_data$diagnosis <- as.factor(test_data$diagnosis)
+```
+
+## Aperçu rapide 
+
+```{r}
+head(data)
+# dim(data)
+# str(data)
+```
+
+# Modélisation 
+
+## AFD (Analyse Factorielle Discriminante)
+
+Nous allons réaliser une AFD pour prédire le diagnostic des patientes. 
+
+```{r}
+# install.packages("MASS")
+library(MASS)
+```
+
+### Lancement du modèle 
+
+```{r}
+afd_lda_model <- lda(diagnosis ~ ., data = train_data)
+```
+
+### Prédiction 
+
+On prédit les données avec le modèle, en précisant les probabilités a priori. On obtient alors la table de confusion suivante. 
+
+```{r}
+pred_afd <- predict(afd_lda_model, test_data, prior=c(0.5, 0.5))
+table(pred_afd$class, test_data$diagnosis)
+```
+
+### Performance du modèle 
+
+```{r}
+mean(pred_afd$class == test_data$diagnosis) # accuracy
+```
+
+On obtient une accuracy de 0.92, ce qui est plutôt bon. 
+
+### Amélioration du modèle
+
+On peut essayer de trouver les variables les plus discriminantes pour améliorer le modèle. 
+
+```{r}
+plot(afd_lda_model)
+```
+
+
+### Séléction des variables
+
+```{r}
+library("klaR")
+```
+
+```{r}
+step(lda(diagnosis ~ ., data = train_data), direction = "both")
+```
+
+```{r}
+```
+

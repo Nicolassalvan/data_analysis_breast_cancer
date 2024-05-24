@@ -1,15 +1,13 @@
 ---
-title: "Projet - 3surX - Modélisation"
-author: "Nicolas SALVAN - Alexandre CORRIOU"
-date: "2024-05-23"
+title: "Projet - 4surX - ACP et AFD"
+author: "Nicolas SALVAN"
+date: "2024-05-24"
 output: pdf_document
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
-
-Ce document contient le code pour *modéliser les données*. 
 
 # Lecture des données nettoyées 
 
@@ -34,6 +32,42 @@ head(data)
 # str(data)
 ```
 
+# AFD - Analyse Factorielle discriminante 
 
+## Lancement d'une AFD sur les données d'entraînement 
+
+```{r}
+library(MASS)
+```
+
+
+```{r}
+res.afd <- lda(diagnosis ~ ., data = data)
+res.afd
+```
+
+
+```{r}
+plot(res.afd)
+```
+
+```{r}
+library("FactoMineR")
+```
+
+```{r}
+
+```
+
+```{r}
+plot(res.afd, choix="var")
+```
+
+```{r}
+plot(res.afd, choix="ind")
+```
+
+```{r}
+```
 
 
