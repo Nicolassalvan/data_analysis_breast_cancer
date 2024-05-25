@@ -104,3 +104,21 @@ write.csv(test_data, "data/test_data.csv", row.names = FALSE)
 
 ```
 Il faut noter qu'il faudra convertir la colonne "diagnosis" en facteur dans les données d'apprentissage et de test, mais aussi dans les données cleaned. 
+
+
+## Données d'entrainement équilibrées
+
+```{r}
+train_data_balanced <- rbind(train_data[train_data$diagnosis == "M",], train_data[train_data$diagnosis == "B",][1:179,])
+table(train_data_balanced$diagnosis)
+```
+
+Nous avons maintenant des données d'entrainement équilibrées. 
+
+## Exportation des données d'apprentissage équilibrées
+
+```{r}
+write.csv(train_data_balanced, "data/train_data_balanced.csv", row.names = FALSE)
+```
+
+

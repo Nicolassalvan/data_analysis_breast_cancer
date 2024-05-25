@@ -70,7 +70,32 @@ barplot(most_discriminant, names.arg=colnames(most_discriminant), las=2, col=rai
 Les variables les plus discriminantes sont les variables qui ont une influence sur l'axe discriminant. Parmi elles, on observe notamment les variables `concave.points_worst`, `perimeter.worst`, `concave.points_mean` et `radius_worst`.
 
 
+# ACP - Analyse en Composantes Principales
 
+## Lancement d'une ACP sur les données 
+
+[A AMELIORER / COMPLETER]
+
+```{r}
+# install.packages("FactoMineR")
+library("FactoMineR")
+```
+
+```{r}
+res.pca <- PCA(data[2:27], scale.unit = TRUE, graph = TRUE, quali.sup = 1)
+```
+
+On n'arrive pas à distinguer les individus sur le plan principal. L'ACP n'est pas adaptée pour ce type de données. 
+
+```{r}
+res.pca
+```
+
+## Affichage des variables ayant le plus d'influence sur les axes
+
+```{r}
+plot(res.pca, choix = "var", habillage = 1, cex = 0.8, col.var = "black", select = "contrib 5")
+```
 
 
 

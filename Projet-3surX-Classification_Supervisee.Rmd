@@ -59,26 +59,320 @@ On prédit les données avec le modèle, en précisant les probabilités a prior
 pred_afd <- predict(afd_lda_model, test_data, prior=c(0.5, 0.5))
 table(pred_afd$class, test_data$diagnosis)
 ```
+On observe que le modèle a prédit 0 faux négatifs et 9 faut positifs. Peut-être que les données d'entrainement ne sont pas assez représentatives, et que l'on a des tailles de classes différentes.
+
+```{r}
+table(train_data$diagnosis)
+table(test_data$diagnosis)
+
+```
+On est en effet sur du 2/3 vs 1/3. Il faudrait réequilibrer les données pour obtenir des résultats plus fiables. 
+
 
 ### Performance du modèle 
 
 ```{r}
-mean(pred_afd$class == test_data$diagnosis) # accuracy
+afd_accuracy <- mean(pred_afd$class == test_data$diagnosis) # accuracy
+afd_accuracy
 ```
 
 On obtient une accuracy de 0.92, ce qui est plutôt bon. 
 
+## LDA (Analyse Discriminante Linéaire)
 
-### Séléction des variables
+### Lancement du modèle 
 
 ```{r}
-library("klaR")
+# Il a déjà été lancé dans la partie AFD
+# afd_lda_model <- lda(diagnosis ~ ., data = train_data)
+```
+
+### Prédiction
+
+```{r}
+pred_lda <- predict(afd_lda_model, test_data)
+table(pred_lda$class, test_data$diagnosis)
+```
+
+### Performance du modèle 
+
+```{r}
+lda_accuracy <- mean(pred_lda$class == test_data$diagnosis) # accuracy
+lda_accuracy
+```
+On obtient une accuracy un peu plus faible que l'AFD. Cela s'explique par le fait que l'AFD est plus adaptée aux données.
+
+### Simplication du modèle 
+
+On peut simplifier le modèle en ne prenant que les variables les plus importantes. 
+
+```{r}
+library(klaR)
 ```
 
 ```{r}
-step(lda(diagnosis ~ ., data = train_data), direction = "both")
+stepwise_lda <- stepclass(diagnosis~., data=train_data, method="lda", direction="backward", output = FALSE)
 ```
 
 ```{r}
+summary(stepwise_lda$model$name)
 ```
+On a pu supprimer cinq variables inutiles.
+On relance une lda sur le modèle simplifié. 
+
+```{r}
+lda_simple_model <- lda(stepwise_lda$formula, data=train_data)
+```
+
+```{r}
+pred_lda_simple <- predict(lda_simple_model, test_data)
+table(pred_lda_simple$class, test_data$diagnosis)
+```
+
+```{r}
+lda_simple_accuracy <- mean(pred_lda_simple$class == test_data$diagnosis) # accuracy
+lda_simple_accuracy
+```
+On obtient un score meilleur avec le modèle plus léger. Nous avons peut être fait du sur-apprentissage. 
+
+
+## QDA (Analyse Discriminante Quadratique)
+
+### Lancement du modèle 
+
+```{r}
+afd_qda_model <- qda(diagnosis ~ ., data = train_data)
+```
+
+### Prédiction
+
+```{r}
+pred_qda <- predict(afd_qda_model, test_data)
+table(pred_qda$class, test_data$diagnosis)
+```
+### Performance du modèle 
+
+```{r}
+qda_accuracy <- mean(pred_qda$class == test_data$diagnosis) # accuracy
+qda_accuracy
+```
+On obtient une accuracy de 0.95, ce qui est plutôt bon. 
+
+### Simplification du modèle
+
+On peut simplifier le modèle en ne prenant que les variables les plus importantes. 
+
+```{r}
+stepwise_qda <- stepclass(diagnosis~., data=train_data, method="qda", direction="backward", output = FALSE)
+```
+
+```{r}
+qda_simple_model <- qda(stepwise_qda$formula, data=train_data)
+```
+
+```{r}
+summary(stepwise_qda$model$name)
+```
+On a pu supprimer deux variables inutiles. On relance une qda sur le modèle simplifié.
+
+```{r}
+pred_qda_simple <- predict(qda_simple_model, test_data)
+table(pred_qda_simple$class, test_data$diagnosis)
+```
+
+```{r}
+qda_simple_accuracy <- mean(pred_qda_simple$class == test_data$diagnosis) # accuracy
+qda_simple_accuracy
+
+```
+
+
+## CART 
+
+[A FAIRE]
+
+## Random Forest
+
+### Lancement du modèle 
+
+```{r}
+# install.packages("randomForest")
+library(randomForest)
+```
+
+```{r}
+rf_model <- randomForest(train_data$diagnosis ~ ., data = train_data, ntree = 100)
+```
+
+### Prédiction
+
+```{r}
+pred_rf <- predict(rf_model, test_data, type="prob")
+pred_rf_fact <- ifelse(pred_rf[,2] > 0.5, "M", "B")
+prob_rf <- pred_rf[, "B"]
+table(pred_rf_fact, test_data$diagnosis)
+```
+### Performance du modèle 
+
+```{r}
+rf_accuracy <- mean(pred_rf_fact == test_data$diagnosis) # accuracy
+rf_accuracy
+```
+
+### Erreur OOB (Out-of-Bag)
+
+```{r}
+plot(rf_model)
+legend("topright", colnames(rf_model$err.rate), col=1:3, lty=1:3)
+```
+Le taux d'erreur semble s'être stabilisé. On observe que l'erreur OOB pour la classification "M" semble plus élevée que pour la classification "B". Il y a donc un déséquilibre dans les classes. Essayons d'équilibrer le jeu d'entrainement. 
+
+### Modèle avec données équilibrées
+
+
+```{r}
+train_data_balanced <- read.csv("data/train_data_balanced.csv", header = TRUE, sep = ",")
+train_data_balanced$diagnosis <- as.factor(train_data_balanced$diagnosis)
+```
+
+
+```{r}
+rf_model_balanced <- randomForest(train_data_balanced$diagnosis ~ ., data = train_data_balanced, ntree = 100)
+```
+
+```{r}
+plot(rf_model_balanced)
+```
+Le taux d'erreur semble s'être stabilisé. 
+
+```{r}
+pred_rf_balanced <- predict(rf_model_balanced, test_data, type="prob")
+pred_rf_fact_balanced <- ifelse(pred_rf_balanced[,2] > 0.5, "M", "B")
+prob_rf_balanced <- pred_rf_balanced[, "B"]
+table(pred_rf_fact_balanced, test_data$diagnosis)
+```
+
+```{r}
+rf_accuracy_balanced <- mean(pred_rf_fact_balanced == test_data$diagnosis) # accuracy
+rf_accuracy_balanced
+```
+
+On obtient des performances similaires. 
+
+## Régression Logistique
+
+### Lancement du modèle 
+
+```{r}
+glm_model <- glm(diagnosis ~ ., data = train_data, family = binomial,control = glm.control(maxit = 50)) # Augmentation du nombre d'itérations car le modèle ne converge pas
+```
+
+Il y a des warnings, ce qui signifie que le modèle n'est pas bien calibré. 
+
+```{r}
+summary(glm_model)
+```
+### Calcul des odds ratios (OR)
+
+```{r}
+exp(coef(glm_model))
+```
+
+On observe des extrêmes pour les odds ratios. Cela est dû à la présence de variables corrélées, nous allons donc plus tard simplifier le modèle. 
+
+### Intérêt des variables explicatives
+
+```{r}
+res0 =glm(diagnosis ~ 1, family = "binomial", data=train_data)
+anova(res0,glm_model,test="Chisq")
+```
+On observe que l'on a une p-value proche de 0, donc on rejette l'hypothèse nulle et on peut conclure qu'il y a au moins une variables explicative qui est significative.
+
+### Prédiction
+
+```{r}
+pred_glm <- predict(glm_model, test_data, type = "response")
+pred_glm_qual <- ifelse(pred_glm > 0.5, "M", "B")
+table(pred_glm_qual, test_data$diagnosis)
+```
+### Performance du modèle 
+
+```{r}
+glm_accuracy <- mean(pred_glm_qual == test_data$diagnosis) # accuracy
+glm_accuracy
+```
+On obtient une accuracy de 88.6%, ce qui est plutôt bon mais pas aussi bon que les autres modèles.
+
+### Simplification du modèle avec des régressions logistiques pénalisées
+
+Nous allons simplifier le modèle de régression logistique pour supprimer les variables inutiles.
+
+```{r}
+# install.packages("glmnet")
+library(glmnet)
+```
+Nous allons réaliser une régression de type Ridge et de type Lasso 
+
+
+#### Lancement des algorithmes 
+
+```{r}
+ridge_model <- glmnet(as.matrix(train_data[, -1]), train_data$diagnosis, alpha = 0, family = "binomial")
+lasso_model <- glmnet(as.matrix(train_data[, -1]), train_data$diagnosis, alpha = 1, family = "binomial")
+```
+
+L'algorithme a bien convergé. 
+
+#### Visualisation des chemins de régularisation des estimateurs `ridge` et `lasso`
+
+```{r}
+plot(ridge_model, label = TRUE)
+```
+
+```{r}
+plot(ridge_model, xvar = "lambda", label = TRUE)
+```
+
+```{r}
+plot(lasso_model, label = TRUE)
+```
+
+```{r}
+plot(lasso_model, xvar = "lambda", label = TRUE)
+```
+
+#### Prédictions et performances 
+
+```{r}
+pred_ridge <- predict(ridge_model, s = 0.01, newx = as.matrix(test_data[, -1]), type = "response")
+pred_ridge_qual <- ifelse(pred_ridge > 0.5, "M", "B")
+table(pred_ridge_qual, test_data$diagnosis)
+```
+
+```{r}
+ridge_accuracy <- mean(pred_ridge_qual == test_data$diagnosis) # accuracy
+ridge_accuracy
+```
+
+```{r}
+pred_lasso <- predict(lasso_model, s = 0.01, newx = as.matrix(test_data[, -1]), type = "response")
+pred_lasso_qual <- ifelse(pred_lasso > 0.5, "M", "B")
+table(pred_lasso_qual, test_data$diagnosis)
+```
+
+```{r}
+lasso_accuracy <- mean(pred_lasso_qual == test_data$diagnosis) # accuracy
+lasso_accuracy
+
+```
+#### Nombre de variables sélectionnées
+
+```{r}
+sum(coef(lasso_model, s=exp(-6))!=0)
+```
+
+```{r}
+sum(coef(ridge_model, s=exp(-6))!=0)
+```
+On a sélectionné beaucoup moins de variables pour le modèle Lasso. On peut vérifier s'il est toujours légitime par rapport à nos données avec un test de vraissemblance. 
 
