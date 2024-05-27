@@ -225,8 +225,8 @@ rf_accuracy
 plot(rf_model)
 legend("topright", colnames(rf_model$err.rate), col=1:3, lty=1:3)
 ```
-Le taux d'erreur semble s'être stabilisé. On observe que l'erreur OOB pour la classification "M" semble plus élevée que pour la classification "B". Il y a donc un déséquilibre dans les classes. Essayons d'équilibrer le jeu d'entrainement. 
-
+Le taux d'erreur semble s'être stabilisé. On observe que l'erreur OOB pour la classification "M" semble plus élevée que pour la classification "B". Il y a donc un déséquilibre dans les classes. Essayons d'équilibrer le jeu d'entrainement.
+ 
 ### Modèle avec données équilibrées
 
 
@@ -374,5 +374,139 @@ sum(coef(lasso_model, s=exp(-6))!=0)
 ```{r}
 sum(coef(ridge_model, s=exp(-6))!=0)
 ```
-On a sélectionné beaucoup moins de variables pour le modèle Lasso. On peut vérifier s'il est toujours légitime par rapport à nos données avec un test de vraissemblance. 
+On a sélectionné beaucoup moins de variables pour le modèle Lasso, qui a des performances similaires. 
+
+
+
+
+
+
+
+
+## SVM
+
+Nous avons décidé d'expérimenter un modèle SVM pour voir si les performances sont meilleures, comme nous l'avons fait lors de nos projets industriels. 
+
+### Lancement du modèle 
+
+```{r}
+# install.packages("e1071")
+library(e1071)
+```
+
+```{r}
+svm_lin_model <- svm(diagnosis ~ ., data = train_data, kernel = "linear",  probability = TRUE )
+svm_rbf_model <- svm(diagnosis ~ ., data = train_data, kernel = "radial",  probability = TRUE )
+```
+
+### Prédiction
+
+```{r}
+pred_svm_lin <- predict(svm_lin_model, test_data, probability = TRUE)
+pred_svm_lin_prob <- attr(pred_svm_lin, "probabilities")
+table(pred_svm_lin, test_data$diagnosis)
+```
+
+```{r}
+pred_svm_rbf <- predict(svm_rbf_model, test_data, probability = TRUE)
+pred_svm_rbf_prob <- attr(pred_svm_rbf, "probabilities")
+table(pred_svm_rbf, test_data$diagnosis)
+```
+
+### Performance du modèle
+
+```{r}
+svm_lin_accuracy <- mean(pred_svm_lin == test_data$diagnosis) # accuracy
+svm_lin_accuracy
+```
+
+```{r}
+svm_rbf_accuracy <- mean(pred_svm_rbf == test_data$diagnosis) # accuracy
+svm_rbf_accuracy
+```
+# Evaluation des modèles
+
+## Courbes ROC
+
+```{r}
+# install.packages("pROC")
+library("pROC")
+```
+
+### Calcul des courbes ROC
+
+```{r}
+roc_afd <- roc(test_data$diagnosis, pred_afd$posterior[,2])
+roc_lda <- roc(test_data$diagnosis, pred_lda$posterior[,2])
+roc_lda_simple <- roc(test_data$diagnosis, pred_lda_simple$posterior[,2])
+roc_qda <- roc(test_data$diagnosis, pred_qda$posterior[,2])
+roc_qda_simple <- roc(test_data$diagnosis, pred_qda_simple$posterior[,2])
+# rpc_cart <- roc(test_data$diagnosis, pred_cart)
+roc_glm <- roc(test_data$diagnosis, pred_glm)
+roc_ridge <- roc(test_data$diagnosis, pred_ridge)
+roc_lasso <- roc(test_data$diagnosis, pred_lasso)
+roc_rf <- roc(test_data$diagnosis, prob_rf)
+roc_rf_balanced <- roc(test_data$diagnosis, prob_rf_balanced)
+
+roc_svm_lin <- roc(test_data$diagnosis, pred_svm_lin_prob[,2])
+roc_svm_rbf <- roc(test_data$diagnosis, pred_svm_rbf_prob[,2])
+```
+```{r}
+roc_list <- list(roc_afd, roc_lda, roc_lda_simple, roc_qda, roc_qda_simple, roc_glm, roc_ridge, roc_lasso, roc_rf, roc_rf_balanced, roc_svm_lin, roc_svm_rbf)
+legends_list <- c("AFD", "LDA", "LDA simple", "QDA", "QDA simple", "GLM", "Ridge", "Lasso", "RF", "RF balanced", "SVM lin", "SVM rbf")
+```
+
+### Affichage des courbes ROC
+
+```{r}
+plot(roc_afd, col = "red", main = "Courbes ROC")
+cols <- rainbow(length(roc_list))
+j <- 1
+for (i in roc_list) {
+  plot(i, add = TRUE, col = cols[j], label = legends_list[j])
+  j <- j + 1
+}
+legend("bottomright", legend = legends_list, col = cols, lty = 1, cex = 0.8)
+
+```
+
+### AUC
+
+```{r}
+df.auc <- data.frame(model = legends_list, auc = sapply(roc_list, function(x) auc(x)))
+df.auc
+```
+
+
+```{r}
+barplot(df.auc$auc, names.arg = df.auc$model, col = rainbow(length(df.auc$auc)), main = "AUC des modèles", xlab = "Modèles", xlim = c(0,1), cex.names = 0.7, horiz = TRUE, las = 1)
+```
+
+```{r}
+# AUC sorted 
+df.auc_sorted <- df.auc[order(df.auc$auc, decreasing = TRUE),]
+barplot(df.auc_sorted$auc, names.arg = df.auc_sorted$model, col = rainbow(length(df.auc_sorted$auc)), main = "AUC des modèles",xlim = c(0,1), xlab = "Modèles", cex.names = 0.7, horiz = TRUE, las = 1)
+```
+
+### Comparaison de l'accuarcy des modèles
+
+```{r}
+df_accuracy <- data.frame(model = c("AFD", "LDA", "LDA simple", "QDA", "QDA simple", "GLM", "Ridge", "Lasso", "RF", "RF balanced", "SVM lin", "SVM rbf"), accuracy = c(afd_accuracy, lda_accuracy, lda_simple_accuracy, qda_accuracy, qda_simple_accuracy, glm_accuracy, ridge_accuracy, lasso_accuracy, rf_accuracy, rf_accuracy_balanced, svm_lin_accuracy, svm_rbf_accuracy))
+```
+
+
+```{r}
+barplot(df_accuracy$accuracy, names.arg = df_accuracy$model, col = rainbow(length(df_accuracy$accuracy)), main = "Accuracy des modèles", xlab = "Modèles", cex.names = 0.7, horiz = TRUE, las = 1)
+```
+
+```{r}
+df_accuracy_sorted <- df_accuracy[order(df_accuracy$accuracy, decreasing = TRUE),]
+barplot(df_accuracy_sorted$accuracy, names.arg = df_accuracy_sorted$model, col = rainbow(length(df_accuracy_sorted$accuracy)), main = "Accuracy des modèles", xlab = "Modèles", cex.names = 0.7, horiz = TRUE, las = 1)
+```
+
+### Interprétation des résultats
+
+(AF)
+
+# Conclusion
 
