@@ -688,6 +688,148 @@ auc_svm_rbf
 ```
 On obtient des AUC très satisfaisantes. 
 
+## ADABoost
+
+Nous avons décidé d'expérimenter un modèle ADABoost pour voir si les performances sont meilleures, comme nous l'avons fait lors de nos projets industriels.
+
+### Lancement du modèle
+
+```{r}
+# install.packages("gbm")
+library(gbm)
+```
+
+On lance un modèle non-calibré pour voir les performances de base.
+
+```{r}
+ada_model <- gbm(as.numeric(diagnosis)-1 ~ ., data = train_data, distribution = "adaboost")
+ada_model
+```
+### Calibration du modèle
+
+#### Calibration pour une distribution adaboost
+
+```{r}
+ada_cv_adadist_model <- gbm(as.numeric(diagnosis)-1 ~., train_data, distribution = "adaboost",cv.folds = 5, shrinkage = 0.01, n.trees=1500)
+ada_cv_adadist_model
+```
+
+
+```{r}
+B.opt <- gbm.perf(ada_cv_adadist_model, method = "cv")
+```
+En noir, on a la perte pour le jeu ”données”, et en vert la perte estimée par validation croisée (c’est l’erreur de généralisation). Le trait vertical en pointillé donne le nombre d’itérations qui minimise la perte estimée par validation croisée. Si on prend un nombre d’itérations plus grand, on va faire du sur-apprentissage : on apprendra très bien sur le jeu de donnees, mais le modèle qu’on aura appris ne va pas bien se généraliser à de nouvelles données.
+
+```{r}
+B.opt
+```
+
+On remarque que l'erreur de généralisation tend à augmenter avec le nombre d'itérations. Cela signifie que le modèle fait du sur-apprentissage. La valeur optimale obtenue pour le nombre d'itérations est de 548.  
+
+#### Calibration pour une distribution bernoulli
+
+```{r}
+ada_cv_berndist_model <- gbm(as.numeric(diagnosis)-1 ~., train_data, distribution = "bernoulli",cv.folds = 5, shrinkage = 0.01, n.trees=3000)
+```
+
+
+```{r}
+B.opt <- gbm.perf(ada_cv_berndist_model, method = "cv")
+```
+
+
+```{r}
+B.opt
+```
+On obtient une valeur optimale de 1035 pour le nombre d'itérations.
+
+### Prédiction
+
+#### ADABoost sans cross-validation
+
+
+```{r}
+pred_ada <- predict(ada_model, test_data, n.trees = 548)
+pred_ada_qual <- ifelse(pred_ada > 0.5, "M", "B")
+table(pred_ada_qual, test_data$diagnosis)
+```
+
+```{r}
+ada_accuracy <- mean(pred_ada_qual == test_data$diagnosis) # accuracy
+ada_accuracy
+```
+
+```{r}
+roc_ada <- roc(test_data$diagnosis, pred_ada)
+plot(roc_ada, col = "red", AUC = TRUE, main = "Courbe ROC ADABoost")
+```
+
+```{r}
+auc_ada <- auc(roc_ada)
+auc_ada
+```
+
+#### ADABoost avec cross-validation, distribution adaboost
+
+
+```{r}
+pred_ada_cv_adadist <- predict(ada_cv_adadist_model, test_data, n.trees = 548)
+pred_ada_cv_adadist_qual <- ifelse(pred_ada_cv_adadist > 0.5, "M", "B")
+table(pred_ada_cv_adadist_qual, test_data$diagnosis)
+```
+
+```{r}
+ada_cv_adadist_accuracy <- mean(pred_ada_cv_adadist_qual == test_data$diagnosis) # accuracy
+ada_cv_adadist_accuracy
+```
+
+```{r}
+roc_ada_cv_adadist <- roc(test_data$diagnosis, pred_ada_cv_adadist)
+plot(roc_ada_cv_adadist, col = "red", AUC = TRUE, main = "Courbe ROC ADABoost avec cross-validation")
+```
+
+
+```{r}
+auc_ada_cv_adadist <- auc(roc_ada_cv_adadist)
+auc_ada_cv_adadist
+```
+
+#### ADABoost avec cross-validation, distribution Bernoulli
+
+```{r}
+pred_ada_cv_berndist <- predict(ada_cv_berndist_model, test_data, n.trees = 1035)
+pred_ada_cv_berndist_qual <- ifelse(pred_ada_cv_berndist > 0.5, "M", "B")
+table(pred_ada_cv_berndist_qual, test_data$diagnosis)
+```
+
+```{r}
+ada_cv_berndist_accuracy <- mean(pred_ada_cv_berndist_qual == test_data$diagnosis) # accuracy
+ada_cv_berndist_accuracy
+```
+
+```{r}
+roc_ada_cv_berndist <- roc(test_data$diagnosis, pred_ada_cv_berndist)
+plot(roc_ada_cv_berndist, col = "red", AUC = TRUE, main = "Courbe ROC ADABoost avec cross-validation, distribution Bernoulli")
+```
+```{r}
+auc_ada_cv_berndist <- auc(roc_ada_cv_berndist)
+auc_ada_cv_berndist
+```
+
+### Comparaison des modèles ADABoost
+
+```{r}
+df_ada <- data.frame(model = c("ADABoost", "ADABoost CV adaboost", "ADABoost CV bernoulli"), accuracy = c(ada_accuracy, ada_cv_adadist_accuracy, ada_cv_berndist_accuracy), auc = c(auc_ada, auc_ada_cv_adadist, auc_ada_cv_berndist))
+df_ada
+```
+
+```{r}
+plot(roc_ada, col = "red", AUC = TRUE, main = "Courbe ROC ADABoost")
+plot(roc_ada_cv_adadist, col = "blue", AUC = TRUE, add = TRUE)
+plot(roc_ada_cv_berndist, col = "green", AUC = TRUE, add = TRUE)
+legend("bottomright", legend = c("ADABoost", "ADABoost CV adaboost", "ADABoost CV bernoulli"), col = c("red", "blue", "green"), lty = 1, cex = 0.7)
+```
+On obtient la même accuracy pour les trois modèles. Cependant, le modèle ADABoost avec cross-validation et distribution Bernoulli a une AUC légèrement supérieure, et les trois modèles ont des AUC très proches et satisfaisantes.
 
 # Evaluation des modèles
 
@@ -701,11 +843,11 @@ library("pROC")
 ### Calcul des courbes ROC
 
 ```{r}
-roc_list <- list(roc_afd, roc_lda, roc_lda_simple, roc_qda, roc_qda_simple, roc_glm, roc_ridge, roc_lasso, roc_rf, roc_rf_balanced, roc_svm_lin, roc_svm_rbf, roc_cart_naive, roc_cart, roc_cart_opti)
+roc_list <- list(roc_afd, roc_lda, roc_lda_simple, roc_qda, roc_qda_simple, roc_glm, roc_ridge, roc_lasso, roc_rf, roc_rf_balanced, roc_svm_lin, roc_svm_rbf, roc_cart_naive, roc_cart, roc_cart_opti, roc_ada, roc_ada_cv_adadist, roc_ada_cv_berndist)
 ```
 
 ```{r}
-legends_list <- c("AFD", "LDA", "LDA simple", "QDA", "QDA simple", "GLM", "Ridge", "Lasso", "RF", "RF.balanced", "SVM lin", "SVM rbf", "CART naive", "CART", "CART opti")
+legends_list <- c("AFD", "LDA", "LDA simple", "QDA", "QDA simple", "GLM", "Ridge", "Lasso", "RF", "RF.balanced", "SVM lin", "SVM rbf", "CART naive", "CART", "CART opti", "ADABoost", "ADABoost CV adaboost", "ADABoost CV bernoulli")
 ```
 
 
@@ -781,7 +923,7 @@ legend("bottomright", legend = c("Ridge", "Lasso", "SVM RBF", "RF balanced", "AF
 ### Comparaison de l'accuarcy des modèles
 
 ```{r}
-df_accuracy <- data.frame(model = c("AFD", "LDA", "LDA simple", "QDA", "QDA simple", "GLM", "Ridge", "Lasso", "RF", "RF balanced", "SVM lin", "SVM rbf", "CART naive", "CART", "CART opti"), accuracy = c(afd_accuracy, lda_accuracy, lda_simple_accuracy, qda_accuracy, qda_simple_accuracy, glm_accuracy, ridge_accuracy, lasso_accuracy, rf_accuracy, rf_accuracy_balanced, svm_lin_accuracy, svm_rbf_accuracy, cart_naive_accuracy, cart_accuracy, cart_opti_accuracy))
+df_accuracy <- data.frame(model = c("AFD", "LDA", "LDA.simple", "QDA", "QDA.simple", "GLM", "Ridge", "Lasso", "RF", "RF.bal", "SVM lin", "SVM rbf", "CART naive", "CART", "CART opti", "ADABoost", "ADA.cv.ada", "ADA.cv.ber"), accuracy = c(afd_accuracy, lda_accuracy, lda_simple_accuracy, qda_accuracy, qda_simple_accuracy, glm_accuracy, ridge_accuracy, lasso_accuracy, rf_accuracy, rf_accuracy_balanced, svm_lin_accuracy, svm_rbf_accuracy, cart_naive_accuracy, cart_accuracy, cart_opti_accuracy, ada_accuracy, ada_cv_adadist_accuracy, ada_cv_berndist_accuracy))
 ```
 
 
@@ -817,6 +959,24 @@ summary(df_accuracy$accuracy)
 * Meilleurs Modèles* : Les modèles avec les meilleures accuracy sont les modèles de QDA, de régression logistique avec pénalisation de Ridge et de régression Lasso. Comme la QDA n'est pas dans les meilleurs modèles en terme d'AUC, on peut dire que les modèles de régression logistique avec pénalisation de Ridge et de régression Lasso sont les meilleurs modèles de statistiques prédictives que l'on a trouvé. Une très bonne accuracy pour la QDA peut être un signe de sur-apprentissage.
 
 * Modèles moins efficaces* : Le modèle qui a le moins fonctionné est le modèle de régression logistique sans pénalisation. En effet, lorsque nous lancions l'analyse, nous obtenions des warnings ce qui signifiait que le modèle n'était pas bien calibré. Le modèle CART a également eu des performances moins intéressantes que l'on a pu observer avec son accuracy plus basse que les autres, tout comme le LDA. 
+
+### DataFrame du récapitulatif
+
+```{r}
+df <- data.frame(
+  model = c("AFD", "LDA", "LDA.simple", "QDA", "QDA.simple", "GLM", "Ridge", "Lasso", "RF", "RF.bal", "SVM lin", "SVM rbf", "CART naive", "CART", "CART opti", "ADABoost", "ADA.cv.ada", "ADA.cv.ber"), 
+  accuracy = c(afd_accuracy, lda_accuracy, lda_simple_accuracy, qda_accuracy, qda_simple_accuracy, glm_accuracy, ridge_accuracy, lasso_accuracy, rf_accuracy, rf_accuracy_balanced, svm_lin_accuracy, svm_rbf_accuracy, cart_naive_accuracy, cart_accuracy, cart_opti_accuracy, ada_accuracy, ada_cv_adadist_accuracy, ada_cv_berndist_accuracy), 
+  auc = c(auc_afd, auc_lda, auc_lda_simple, auc_qda, auc_qda_simple, auc_glm, auc_ridge, auc_lasso, auc_rf, auc_rf_balanced, auc_svm_lin, auc_svm_rbf, auc_cart_naive, auc_cart, auc_cart_opti, auc_ada, auc_ada_cv_adadist, auc_ada_cv_berndist))
+```
+
+```{r}
+write.csv(df, "data/summary.csv")
+```
+
+```{r}
+summary(df)
+```
+
 
 ### Interprétation des résultats
 
