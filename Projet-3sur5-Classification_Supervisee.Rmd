@@ -1,5 +1,5 @@
 ---
-title: "Projet - 3surX - Classification Supervisée"
+title: "Projet 3/5 Classification Supervisée"
 author: "Nicolas SALVAN - Alexandre CORRIOU"
 date: "2024-05-23"
 output: pdf_document
@@ -43,6 +43,7 @@ Nous allons réaliser une AFD pour prédire le diagnostic des patientes.
 ```{r}
 # install.packages("MASS")
 library(MASS)
+library(pROC)
 ```
 
 ### Lancement du modèle 
@@ -78,6 +79,17 @@ afd_accuracy
 
 On obtient une accuracy de 0.92, ce qui est plutôt bon. 
 
+```{r}
+roc_afd <- roc(test_data$diagnosis, pred_afd$posterior[,2])
+plot(roc_afd, col = "red", AUC = TRUE, main = "Courbe ROC AFD")
+```
+
+```{r}
+auc_afd <- auc(roc_afd)
+auc_afd
+```
+
+
 ## LDA (Analyse Discriminante Linéaire)
 
 ### Lancement du modèle 
@@ -101,6 +113,16 @@ lda_accuracy <- mean(pred_lda$class == test_data$diagnosis) # accuracy
 lda_accuracy
 ```
 On obtient une accuracy un peu plus faible que l'AFD. Cela s'explique par le fait que l'AFD est plus adaptée aux données.
+
+```{r}
+roc_lda <- roc(test_data$diagnosis, pred_lda$posterior[,2])
+plot(roc_lda, col = "red", AUC = TRUE, main = "Courbe ROC LDA")
+```
+
+```{r}
+auc_lda <- auc(roc_lda)
+auc_lda
+```
 
 ### Simplication du modèle 
 
@@ -135,6 +157,16 @@ lda_simple_accuracy
 ```
 On obtient un score meilleur avec le modèle plus léger. Nous avons peut être fait du sur-apprentissage. 
 
+```{r}
+roc_lda_simple <- roc(test_data$diagnosis, pred_lda_simple$posterior[,2])
+plot(roc_lda_simple, col = "red", AUC = TRUE, main = "Courbe ROC LDA simple")
+```
+
+```{r}
+auc_lda_simple <- auc(roc_lda_simple)
+auc_lda_simple
+```
+
 
 ## QDA (Analyse Discriminante Quadratique)
 
@@ -157,6 +189,17 @@ qda_accuracy <- mean(pred_qda$class == test_data$diagnosis) # accuracy
 qda_accuracy
 ```
 On obtient une accuracy de 0.95, ce qui est plutôt bon. 
+
+```{r}
+roc_qda <- roc(test_data$diagnosis, pred_qda$posterior[,2])
+plot(roc_qda, col = "red", AUC = TRUE, main = "Courbe ROC QDA")
+```
+
+```{r}
+auc_qda <- auc(roc_qda)
+auc_qda
+```
+
 
 ### Simplification du modèle
 
@@ -185,6 +228,15 @@ qda_simple_accuracy <- mean(pred_qda_simple$class == test_data$diagnosis) # accu
 qda_simple_accuracy
 
 ```
+```{r}
+roc_qda_simple <- roc(test_data$diagnosis, pred_qda_simple$posterior[,2])
+plot(roc_qda_simple, col = "red", AUC = TRUE, main = "Courbe ROC QDA simple")
+```
+
+```{r}
+auc_qda_simple <- auc(roc_qda_simple)
+auc_qda_simple
+```
 
 
 ## CART
@@ -212,6 +264,10 @@ print(tree)
 ```{r}
 rpart.plot(tree, type=4, digits=3,roundint=FALSE)
 ```
+
+
+
+### Arbre simplifié
 
 ```{r}
 tree2 <- rpart(diagnosis~.,train_data,control=rpart.control(minsplit=5))
@@ -254,7 +310,18 @@ table(pred_cart_opti_qual, test_data$diagnosis)
 cart_accuracy <- mean(pred_cart_opti_qual == test_data$diagnosis) # accuracy
 cart_accuracy
 ```
-Pour le modèle CART optimal, on obtient une accuracy de 0.90, ce qui est plutôt bon.
+Pour le modèle CART optimal, on obtient une accuracy de 0.91, ce qui est plutôt bon.
+
+```{r}
+roc_cart <- roc(test_data$diagnosis, pred_cart_opti[,2])
+plot(roc_cart)
+```
+
+```{r}
+auc_cart <- auc(roc_cart)
+auc_cart
+```
+On obtient une AUC de 0.8788, ce qui est moins bon que les modèles précédents.
 
 ## Random Forest
 
@@ -283,6 +350,17 @@ table(pred_rf_fact, test_data$diagnosis)
 rf_accuracy <- mean(pred_rf_fact == test_data$diagnosis) # accuracy
 rf_accuracy
 ```
+
+```{r}
+roc_rf <- roc(test_data$diagnosis, prob_rf)
+plot(roc_rf, col = "red", AUC = TRUE, main = "Courbe ROC RandomForest")
+```
+
+```{r}
+auc_rf <- auc(roc_rf)
+auc_rf
+```
+
 
 ### Erreur OOB (Out-of-Bag)
 
@@ -323,6 +401,18 @@ rf_accuracy_balanced
 ```
 
 On obtient des performances similaires. 
+
+
+```{r}
+roc_rf_balanced <- roc(test_data$diagnosis, prob_rf_balanced)
+plot(roc_rf_balanced, col = "red", AUC = TRUE, main = "Courbe ROC RandomForest with balanced data")
+```
+
+```{r}
+auc_rf_balanced <- auc(roc_rf_balanced)
+auc_rf_balanced
+```
+
 
 ## Régression Logistique
 
@@ -368,27 +458,46 @@ glm_accuracy
 ```
 On obtient une accuracy de 88.6%, ce qui est plutôt bon mais pas aussi bon que les autres modèles.
 
+```{r}
+roc_glm <- roc(test_data$diagnosis, pred_glm)
+plot(roc_glm, col = "red", AUC = TRUE, main = "Courbe ROC Régression logstique multiple")
+```
+
+```{r}
+auc_glm <- auc(roc_glm)
+auc_glm
+```
+
+
 ### Simplification du modèle avec des régressions logistiques pénalisées
 
-Nous allons simplifier le modèle de régression logistique pour supprimer les variables inutiles.
+
+Nous allons simplifier le modèle de régression logistique pour supprimer les variables inutiles. Pour se faire, nous allons réaliser une régression de type Ridge et de type Lasso 
+
 
 ```{r}
 # install.packages("glmnet")
 library(glmnet)
 ```
-Nous allons réaliser une régression de type Ridge et de type Lasso 
 
 
 #### Lancement des algorithmes 
+
+
 
 ```{r}
 ridge_model <- glmnet(as.matrix(train_data[, -1]), train_data$diagnosis, alpha = 0, family = "binomial")
 lasso_model <- glmnet(as.matrix(train_data[, -1]), train_data$diagnosis, alpha = 1, family = "binomial")
 ```
 
+
+
 L'algorithme a bien convergé. 
 
+
 #### Visualisation des chemins de régularisation des estimateurs `ridge` et `lasso`
+
+
 
 ```{r}
 plot(ridge_model, label = TRUE)
@@ -430,6 +539,29 @@ lasso_accuracy <- mean(pred_lasso_qual == test_data$diagnosis) # accuracy
 lasso_accuracy
 
 ```
+
+```{r}
+roc_ridge <- roc(test_data$diagnosis, pred_ridge)
+roc_lasso <- roc(test_data$diagnosis, pred_lasso)
+```
+
+
+```{r}
+plot(roc_ridge, col = "red", AUC = TRUE, main = "Courbe ROC Régression Ridge")
+```
+
+```{r}
+plot(roc_lasso, col = "red", AUC = TRUE, main = "Courbe ROC Régression Lasso")
+```
+
+```{r}
+auc_ridge <- auc(roc_ridge)
+auc_lasso <- auc(roc_lasso)
+auc_ridge
+auc_lasso
+
+```
+
 #### Nombre de variables sélectionnées
 
 ```{r}
@@ -440,10 +572,6 @@ sum(coef(lasso_model, s=exp(-6))!=0)
 sum(coef(ridge_model, s=exp(-6))!=0)
 ```
 On a sélectionné beaucoup moins de variables pour le modèle Lasso, qui a des performances similaires. 
-
-
-
-
 
 
 
@@ -489,6 +617,29 @@ svm_lin_accuracy
 svm_rbf_accuracy <- mean(pred_svm_rbf == test_data$diagnosis) # accuracy
 svm_rbf_accuracy
 ```
+
+```{r}
+roc_svm_lin <- roc(test_data$diagnosis, pred_svm_lin_prob[,2])
+roc_svm_rbf <- roc(test_data$diagnosis, pred_svm_rbf_prob[,2])
+```
+
+```{r}
+plot(roc_svm_lin, col = "red", AUC = TRUE, main = "Courbe ROC SVM linéaire")
+```
+
+```{r}
+plot(roc_svm_rbf, col = "red", AUC = TRUE, main = "Courbe ROC SVM RBF")
+```
+
+```{r}
+auc_svm_lin <- auc(roc_svm_lin)
+auc_svm_rbf <- auc(roc_svm_rbf)
+auc_svm_lin
+auc_svm_rbf
+```
+On obtient des AUC très satisfaisantes. 
+
+
 # Evaluation des modèles
 
 ## Courbes ROC
@@ -501,24 +652,8 @@ library("pROC")
 ### Calcul des courbes ROC
 
 ```{r}
-roc_afd <- roc(test_data$diagnosis, pred_afd$posterior[,2])
-roc_lda <- roc(test_data$diagnosis, pred_lda$posterior[,2])
-roc_lda_simple <- roc(test_data$diagnosis, pred_lda_simple$posterior[,2])
-roc_qda <- roc(test_data$diagnosis, pred_qda$posterior[,2])
-roc_qda_simple <- roc(test_data$diagnosis, pred_qda_simple$posterior[,2])
-# rpc_cart <- roc(test_data$diagnosis, pred_cart)
-roc_glm <- roc(test_data$diagnosis, pred_glm)
-roc_ridge <- roc(test_data$diagnosis, pred_ridge)
-roc_lasso <- roc(test_data$diagnosis, pred_lasso)
-roc_rf <- roc(test_data$diagnosis, prob_rf)
-roc_rf_balanced <- roc(test_data$diagnosis, prob_rf_balanced)
-
-roc_svm_lin <- roc(test_data$diagnosis, pred_svm_lin_prob[,2])
-roc_svm_rbf <- roc(test_data$diagnosis, pred_svm_rbf_prob[,2])
-```
-```{r}
 roc_list <- list(roc_afd, roc_lda, roc_lda_simple, roc_qda, roc_qda_simple, roc_glm, roc_ridge, roc_lasso, roc_rf, roc_rf_balanced, roc_svm_lin, roc_svm_rbf)
-legends_list <- c("AFD", "LDA", "LDA simple", "QDA", "QDA simple", "GLM", "Ridge", "Lasso", "RF", "RF balanced", "SVM lin", "SVM rbf")
+legends_list <- c("AFD", "LDA", "LDA simple", "QDA", "QDA simple", "GLM", "Ridge", "Lasso", "RF", "RF.balanced", "SVM lin", "SVM rbf")
 ```
 
 ### Affichage des courbes ROC
@@ -535,11 +670,21 @@ legend("bottomright", legend = legends_list, col = cols, lty = 1, cex = 0.8)
 
 ```
 
+
+
+
+
 ### AUC
 
 ```{r}
 df.auc <- data.frame(model = legends_list, auc = sapply(roc_list, function(x) auc(x)))
+
 df.auc
+```
+
+```{r}
+# Sauvegarde des AUC dans un fichier csv
+write.csv(df.auc, "data/auc.csv")
 ```
 
 
@@ -564,6 +709,11 @@ df_accuracy <- data.frame(model = c("AFD", "LDA", "LDA simple", "QDA", "QDA simp
 
 ```{r}
 df_accuracy
+```
+
+```{r}
+# Sauvegarde des accuracy dans un fichier csv
+write.csv(df_accuracy, "data/accuracy.csv")
 ```
 
 
