@@ -1,11 +1,17 @@
 ---
-title: "Untitled"
-author: "Alexandre CORRIOU, Nicolas SALVAN"
-date: "2024-05-24"
-output: html_document
+title: "Projet 5/5 Clustering  "
+author: "Alexandre CORRIOU - Nicolas SALVAN"
+date: "2024-05-23"
+output: pdf_document
 ---
 
-# Lecture des données nettoyées 
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Ce document a pour objectif de réaliser une analyse de clustering, il contient toutes les sorties R et les commentaires associés. 
+
+# Lecture des données nettoyées
 
 ## Importation du dataset 
 
@@ -14,32 +20,131 @@ data <- read.csv("data/data_cleaned.csv", header = TRUE, sep = ",")
 data$diagnosis <- as.factor(data$diagnosis)
 ```
 
-# Classification non-supervisée
-
-## Dendrogramme
+## Aperçu rapide
 
 ```{r}
-data.clust <- data[-1] #suppression des classes
-data.cent <- scale(data.clust)
+head(data)
+# str(data)
+# summary(data)
+```
+
+## Séparation des données numériques et centrage-réduction
+
+```{r}
+data_num <- data[-1]
+data.cent <- scale(data_num) 
+```
+
+# Modèles de clustering 
+
+Comme nous avons relativement peu d'individus, nous allons réaliser dans un premier temps une classification ascendante hiérarchique (CAH) pour avoir une idée du nombre de clusters à choisir, puis nous réaliserons un k-means pour obtenir les clusters. 
+
+## CAH - Classification Ascendante Hiérarchique*
+
+### Dendrogramme
+
+```{r}
 d.data = dist(data.cent)
 hc <- hclust(d.data, method = "ward.D2")
-plot(hc)
+plot(hc, cex = 0.01, main = "Dendrogramme de la CAH" )
 ```
+On peut voir qu'il y a 3 branches qui sont assez longues, on peut donc choisir 3 clusters. On peut le confirmer en affichant la hauteur des branches les plus hautes. 
+
+### Hauteur des branches les plus hautes
+
 ```{r}
-barplot(hc$height[(dim(data)[1]-20):dim(data)[1]])
+N <- 20
+barplot(hc$height[(dim(data)[1]-N):dim(data)[1]], col = rainbow(N), main = "Hauteur des 20 plus hautes branches") # Plot des 20 dernières branches
 ```
-Selon les interprétations, on peut considérer qu'il faut garder deux ou trois classes.
+On peut bien déceler 3 branches qui sont assez longues. Nous choisirons donc 3 clusters pour la suite de l'analyse.
+
+```{r}
+plot(hc, cex = 0.01, main = "Dendrogramme de la CAH (3 clusters)")
+rect.hclust(hc, k = 3)
+```
+
+
+## K-means
+
+### Clustering à 3 groupes
+
+On calcule le clustering à 3 groupes en utilisant 1000 points de départ différents pour éviter les minima locaux.
+
+```{r}
+kmeans.result <- kmeans(data.cent, nstart = 1000, centers=3)
+```
+
+On constitue une base de données avec les données centrées-réduites et la classe de chaque individu obtenue avec le clustering.
+
+```{r}
+data_classe <- cbind.data.frame(data[1], data.cent, classe=factor(kmeans.result$cluster))
+```
+
+### Visualisation des clusters avec une ACP
 
 ```{r}
 library(FactoMineR)
-library(factoextra)
 ```
-### Clustering à 3 groupes
+
 
 ```{r}
-kmeans.result=kmeans(data.clust, nstart = 100, centers=3)
-data_classe <- cbind.data.frame(data.clust, classe=factor(kmeans.result$cluster))
-res <- PCA(data_classe, quali.sup = c(2,31), scale.unit = TRUE)
+res.pca <- PCA(data_classe, graph = FALSE, quali.sup = c(1, 32))
 ```
-On remarque que beaucoup de variables sont très corrélées entre elles.
+
+
+```{r}
+plot(res.pca, choix = "ind", graph.type = "classic", habillage = 32, col.hab = c("red", "blue", "green"), title = "ACP des individus avec clustering")
+
+```
+On observe bien sur le plan principal de l'ACP que les clusters sont bien séparés.
+
+### Comparaison des clusters trouvés avec le diagnostic
+
+On peut comparer les clusters trouvés avec le diagnostic initial pour voir si les clusters correspondent bien aux diagnostics. 
+
+```{r}
+table(data_classe$diagnosis, data_classe$classe)
+table(data_classe$classe, data_classe$diagnosis)
+```
+On observe que les clusters ne correspondent pas aux diagnostics. En effet, les clusters 1 et 2 correspondent à des diagnostics plutôt malins, et le cluster 3 correspond à des diagnostics plutôt bénins. Seul le cluster 2 correspond bien aux diagnostics malins. 
+
+```{r}
+barplot(table(data_classe$diagnosis, data_classe$classe), beside = TRUE, col = c("blue", "red"), legend = TRUE, main = "Comparaison des clusters trouvés avec le diagnostic")
+```
+
+```{r}
+barplot(table(data_classe$classe, data_classe$diagnosis), beside = TRUE, col = c("red", "blue", "green"), legend = TRUE, main = "Comparaison des diagnostics avec les clusters trouvés")
+```
+On peut visualiser ces résultats dans les histogrammes précédents. 
+
+
+## Clustering à 2 groupes
+
+On peut également réaliser un clustering à 2 groupes pour voir si les clusters correspondent mieux aux diagnostics. 
+
+```{r}
+plot(hc, cex = 0.01, main = "Dendrogramme de la CAH (2 clusters)")
+rect.hclust(hc, k = 2)
+```
+
+
+
+```{r}
+kmeans.result2=kmeans(data.cent, nstart = 1000, centers=2)
+data_classe2 <- cbind.data.frame(data[1], data.cent, classe=factor(kmeans.result2$cluster))
+table(data_classe2$diagnosis, data_classe2$classe)
+```
+On observe que les clusters correspondent mieux aux diagnostics. En effet, le cluster 1 correspond aux diagnostics bénins, et le cluster 2 correspond aux diagnostics malins. 
+
+```{r}
+barplot(table(data_classe2$diagnosis, data_classe2$classe), beside = TRUE, col = c("blue", "red"), legend = TRUE, main = "Comparaison des clusters trouvés avec le diagnostic")
+```
+La classification à 2 groupes semble donc plus pertinente pour une analyse de clustering. 
+
+
+# Conclusion
+
+Nous avons réalisé une analyse de clustering sur les données nettoyées. Nous avons choisi de réaliser une CAH pour déterminer le nombre de clusters à choisir, puis un k-means pour obtenir les clusters. Nous avons choisi 3 clusters. Nous avons ensuite réalisé une ACP pour visualiser les clusters. Nous avons comparé les clusters trouvés avec les diagnostics initiaux. Nous avons observé que les clusters ne correspondaient pas forcément aux diagnostics. En effet, les clusters 1 et 2 correspondent à des diagnostics plutôt malins, et le cluster 3 correspond à des diagnostics plutôt bénins. Seul le cluster 2 correspond bien aux diagnostics malins. 
+
+Il est ainsi possible de déceler plusieurs catégories de tumeurs, mais il est plus difficile de savoir s'il s'agit de tumeurs bénignes ou malignes, d'où l'intérêt de réaliser une classification supervisée (ou pour les docteurs de faire d'autres tests). 
 

@@ -1,5 +1,5 @@
 ---
-title: "Projet 1/5 Traitement-Des-Donnees"
+title: "Projet 1/5 Traitement Des Donnees"
 author: "Nicolas SALVAN - Alexandre CORRIOU"
 date: "2024-05-17"
 output: pdf_document
