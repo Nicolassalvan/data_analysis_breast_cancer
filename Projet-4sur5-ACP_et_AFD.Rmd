@@ -1,0 +1,233 @@
+---
+title: "Projet 4/5 ACP et AFD"
+author: "Nicolas SALVAN - Alexandre CORRIOU"
+date: "2024-05-24"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Lecture des données nettoyées
+
+## Importation du dataset
+
+```{r}
+data <- read.csv("data/data_cleaned.csv", header = TRUE, sep = ",")
+data$diagnosis <- as.factor(data$diagnosis)
+
+```
+
+## Aperçu rapide
+
+```{r}
+head(data)
+# dim(data)
+# str(data)
+```
+
+# ACP - Analyse en Composantes Principales
+
+## Lancement d'une ACP sur les données
+
+Nous allons réaliser une ACP sur nos données avec la bibliothèque `FactoMineR`.
+
+```{r}
+# install.packages("FactoMineR")
+library("FactoMineR")
+```
+
+```{r}
+res.pca <- PCA(data, scale.unit = TRUE, graph = FALSE, quali.sup = 1)
+```
+
+## Choix du nombre de composantes
+
+```{r}
+plot(res.pca$eig[,1], type = "b", xlab = "Composantes", ylab = "Valeurs propres", main = "Eboulis des valeurs propres")
+```
+
+On observe que les composantes principales sont les trois premières. On peut le vérifier en affichant leur contribution.
+
+```{r}
+eig_percentage = res.pca$eig[,2]/sum(res.pca$eig[,2])
+barplot(eig_percentage, names.arg = FALSE, col = rainbow(26), main = "Contribution des composantes", xlab = "Composantes", ylab = "Contribution (%)")
+```
+
+```{r}
+eig_percentage[1:3]
+sum(eig_percentage[1:3])
+```
+
+Les trois premières composantes représentent 72.6% de l'information.
+
+## Affichage des variables ayant le plus d'influence sur les axes
+
+```{r}
+res.pca.contrib <- res.pca$var$contrib[, 1:3]
+barplot(res.pca.contrib[,1], names.arg = rownames(res.pca$var$contrib), col = rainbow(26), main = "Contribution des variables sur F1", ylab = "Contribution (%)", las= 2, cex.names = 0.5)
+barplot(res.pca.contrib[,2], names.arg = rownames(res.pca$var$contrib), col = rainbow(26), main = "Contribution des variables sur F2", ylab = "Contribution (%)", las= 2, cex.names = 0.5)
+barplot(res.pca.contrib[,3], names.arg = rownames(res.pca$var$contrib), col = rainbow(26), main = "Contribution des variables sur F3", ylab = "Contribution (%)", las= 2, cex.names = 0.5)
+```
+
+On observe ici les variables qui contribuent le plus dans les plans principaux de l'ACP.
+
+### Plan (F1, F2)
+
+```{r}
+plot(res.pca, choix = "var", cex = 0.8, col.var = "black", select = "contrib 5")
+```
+
+### Plan (F1, F3)
+
+```{r}
+plot(res.pca, choix = "var", cex = 0.8, col.var = "black", select = "contrib 5", axes = c(1,3))
+```
+
+On obtient grâce à ce graphe les variables qui contribuent le plus dans ce plan.
+
+### Plan (F2, F3)
+
+```{r}
+plot(res.pca, choix = "var", cex = 0.8, col.var = "black", select = "contrib 7", axes = c(2,3))
+```
+
+On observe que dans ce plan, les variables ne sont pas très bien représentées. On peut le voir en affichant celles avec un cos2 supérieur à 0.8 (aucune).
+
+```{r}
+plot(res.pca, choix = "var", cex = 0.8, col.var = "black", select = "cos2 .8", axes = c(2,3))
+```
+
+## Représentation des individus
+
+```{r}
+plot(res.pca, choix = "ind", cex = 0.8, col.ind = "black", select = "contrib 5", label = "ind")
+```
+
+On observe que certains individus contribuent beaucouo dans ce plan. Regardons si ces individus ont autant d'influence sur les autres plans (F1, F3) et (F2, F3).
+
+```{r}
+plot(res.pca, choix = "ind", cex = 0.8, col.ind = "black", select = "contrib 5", axes = c(1,3), label = "ind")
+```
+
+```{r}
+plot(res.pca, choix = "ind", cex = 0.8, col.ind = "black", select = "contrib 7", axes = c(2,3), label = "ind")
+```
+
+```{r}
+par(mfrow=c(1,3))
+
+plot(res.pca, graph.type = "classic", choix = "ind", cex = 0.8, col.ind = "black", select = "contrib 5", label = "ind")
+
+plot(res.pca, choix = "ind", graph.type = "classic", cex = 0.8, col.ind = "black", select = "contrib 5", axes = c(1,3), label = "ind")
+
+plot(res.pca, choix = "ind", graph.type = "classic", cex = 0.8, col.ind = "black", select = "contrib 7", axes = c(2,3), label = "ind")
+
+```
+
+Les individus 462, 213, 123 sont très influents sur les plans (F1, F2) et (F1, F3). Il serait intéressant de les étudier plus en détail.
+
+```{r}
+data[c(462, 213, 123),]
+```
+
+## Représentation des individus labelisés sur les plans principaux
+
+```{r}
+plot(res.pca$ind$coord[,1], res.pca$ind$coord[,2], col = c("blue", "red"), pch = 20, main = "ACP avec couleurs sur le plan (F1, F2)", cex=1.2, xlab = "F1", ylab = "F2")
+legend("topright", legend = c("Bénin", "Maligne"), col = c("blue", "red"), pch = 20, cex = 0.8)
+```
+
+```{r}
+plot(res.pca$ind$coord[,1], res.pca$ind$coord[,3], col = c("blue", "red"), pch = 20, main = "ACP avec couleurs sur le plan (F1, F3)", cex=1.2, xlab = "F1", ylab = "F3")
+legend("topright", legend = c("Bénin", "Maligne"), col = c("blue", "red"), pch = 20, cex = 0.8)
+```
+
+```{r}
+plot(res.pca$ind$coord[,2], res.pca$ind$coord[,3], col = c("blue", "red"), pch = 20, main = "ACP avec couleurs sur le plan (F2, F3)", cex=1.2, xlab = "F2", ylab = "F3")
+legend("topright", legend = c("Bénin", "Maligne"), col = c("blue", "red"), pch = 20, cex = 0.8)
+```
+
+On s'aperçoit qu'il est très difficile de distinguer les individus sur les plans principaux de l'ACP, d'où la nécessité de réaliser une AFD.
+
+On peut représenter ces trois représentations ci-dessus sur un seul graphique.
+
+```{r}
+par(mfrow=c(1,3))
+
+plot(res.pca$ind$coord[,1], res.pca$ind$coord[,2], col = c("blue", "red"), pch = 20, main = "(F1, F2)", cex=1.2, xlab = "F1", ylab = "F2")
+legend("topright", legend = c("Bénin", "Maligne"), col = c("blue", "red"), pch = 20, cex = 0.8)
+
+plot(res.pca$ind$coord[,1], res.pca$ind$coord[,3], col = c("blue", "red"), pch = 20, main = "(F1, F3)", cex=1.2, xlab = "F1", ylab = "F3")
+legend("topright", legend = c("Bénin", "Maligne"), col = c("blue", "red"), pch = 20, cex = 0.8)
+
+plot(res.pca$ind$coord[,2], res.pca$ind$coord[,3], col = c("blue", "red"), pch = 20, main = "(F2, F3)", cex=1.2, xlab = "F2", ylab = "F3")
+legend("topright", legend = c("Bénin", "Maligne"), col = c("blue", "red"), pch = 20, cex = 0.8)
+```
+
+## Représentation des catégories sur les plans principaux
+
+```{r}
+par(mfrow=c(1,3))
+plot(res.pca, graph= "classic", choix = "ind", cex = 1, select = "contrib 0")
+plot(res.pca, graph= "classic", choix = "ind", cex = 1, select = "contrib 0", axes = c(1,3))
+plot(res.pca, graph= "classic", choix = "ind", cex = 1, select = "contrib 0", axes = c(2,3))
+```
+
+On observe que l'axe 1 est le plus discriminant par rapport aux centres de gravité des groupes. En effet, les centres des catégories sont bien séparés le long de cet axe. Néanmoins, le manque de séparation visible sur les plans (F1, F2), (F1, F3) et (F2, F3) nous pousse à réaliser une AFD.
+
+# AFD - Analyse Factorielle discriminante
+
+## Lancement d'une AFD sur les données
+
+Nous allons réaliser une AFD sur nos données avec la bibliothèque `MASS`.
+
+```{r}
+library(MASS)
+```
+
+```{r}
+res.afd <- lda(data$diagnosis ~ ., data = data)
+res.afd
+```
+
+## Représentation des variables
+
+Pour tracer le cercle de corrélation, il nous faut les coordonnées des variables sur les axes discriminants. Or, comme il y a un seul axe, les coordonnées des variables sont les coefficients de l'axe discriminant.
+
+```{r}
+F12 = predict(res.afd, prior=rep(1/2,2))$x
+cercle_correlation=cor(data[,-1],F12)
+cercle_correlation <- cbind(cercle_correlation, rep(0, nrow(cercle_correlation)))
+a=seq(0,2* pi,length=100)
+plot(cos(a), sin(a), type='l',lty=3,xlab='Dim 1', ylab='Dim 2',main="Cercle des corrélations AFD" )
+
+arrows(0,0,cercle_correlation[,1],cercle_correlation[,2],col=2)
+text(cercle_correlation,labels=colnames(data[,-1]), col = "red", cex = 0.7, pos = 3, offset = 0.5, srt = 75)
+
+```
+
+On ne peut pas distinguer une variable en particulier qui influe sur la classification. En effet, le cercle manque un peu de visibilité. On peut faire un barplot des variables pour voir lesquelles sont les plus discriminantes.
+
+```{r}
+most_discriminant <- sort(abs(cercle_correlation[,1]), decreasing = TRUE)[1:10]
+barplot(most_discriminant, names.arg=colnames(most_discriminant), las=2, col=rainbow(30), main="Histogramme des variables les + discriminantes", cex.names = 0.6, horiz = FALSE, ylim = c(0,1)) 
+
+
+```
+
+Les variables les plus discriminantes sont les variables qui ont une influence sur l'axe discriminant. Parmi elles, on observe notamment les variables `concave.points_worst`, `perimeter.worst`, `concave.points_mean` et `radius_worst`.
+
+## Représentation des individus
+
+```{r}
+plot(F12, col = c("blue", "red")[data$diagnosis], pch = 20, main = "Représentation des individus sur le plan discriminant", xlab = "Dim 1", ylab = "Dim 2")
+legend("topright", legend = c("Bénin", "Maligne"), col = c("blue", "red"), pch = 20, cex = 0.8)
+```
+
+On obtient une représentation des individus sur le plan discriminant. On observe que les individus sont bien séparés.
+
+# Conclusion
+
+L'ACP sur les données a permis de mettre en évidence les variables qui contribuent le plus à la variance des données. L'AFD a permis de séparer les individus en fonction de leur diagnostic. Nous n'avons pas pu distinguer les variables les plus discriminantes sur le cercle de corrélation, mais nous avons pu les identifier grâce à un barplot. De plus amples recherches pourraient être faites sur les individus 462, 213 et 123 qui semblent être très influents sur les plans principaux de l'ACP.
