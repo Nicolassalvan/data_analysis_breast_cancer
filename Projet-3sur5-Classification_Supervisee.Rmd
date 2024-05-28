@@ -60,7 +60,7 @@ On prédit les données avec le modèle, en précisant les probabilités a prior
 pred_afd <- predict(afd_lda_model, test_data, prior=c(0.5, 0.5))
 table(pred_afd$class, test_data$diagnosis)
 ```
-On observe que le modèle a prédit 0 faux négatifs et 9 faut positifs. Peut-être que les données d'entrainement ne sont pas assez représentatives, et que l'on a des tailles de classes différentes.
+On observe que le modèle a prédit 0 faux négatifs et 9 faux positifs. Peut-être que les données d'entrainement ne sont pas assez représentatives, et que l'on a des tailles de classes différentes.
 
 ```{r}
 table(train_data$diagnosis)
@@ -88,7 +88,6 @@ plot(roc_afd, col = "red", AUC = TRUE, main = "Courbe ROC AFD")
 auc_afd <- auc(roc_afd)
 auc_afd
 ```
-
 
 ## LDA (Analyse Discriminante Linéaire)
 
@@ -188,7 +187,7 @@ table(pred_qda$class, test_data$diagnosis)
 qda_accuracy <- mean(pred_qda$class == test_data$diagnosis) # accuracy
 qda_accuracy
 ```
-On obtient une accuracy de 0.95, ce qui est plutôt bon. 
+On obtient une accuracy de 0.947, ce qui est plutôt bon. 
 
 ```{r}
 roc_qda <- roc(test_data$diagnosis, pred_qda$posterior[,2])
@@ -248,6 +247,8 @@ library(rpart)
 
 ### Lancement du modèle
 
+Nous allons construire un arbre naïf, avec les paramètres par défaut. 
+
 ```{r}
 tree <- rpart(diagnosis~., train_data)
 ```
@@ -265,19 +266,67 @@ print(tree)
 rpart.plot(tree, type=4, digits=3,roundint=FALSE)
 ```
 
+### Prédiction et performance du modèle naïf
+
+```{r}
+pred_cart_naive <- predict(tree, newdata=test_data, type="prob")
+pred_cart_naive_qual <- ifelse(pred_cart_naive[,2] > 0.5, "M", "B")
+table(pred_cart_naive_qual, test_data$diagnosis)
+```
+```{r}
+cart_naive_accuracy <- mean(pred_cart_naive_qual == test_data$diagnosis) # accuracy
+cart_naive_accuracy
+```
+
+```{r}
+roc_cart_naive <- roc(test_data$diagnosis, pred_cart_naive[,2], plot=TRUE, col = "red", main = "Courbe ROC CART naïve")
+```
+
+```{r}
+auc_cart_naive <- auc(roc_cart_naive)
+auc_cart_naive
+```
+On n'obtient pas de très bonnes performances avec le modèle naïf. Nous allons essayer de l'améliorer.
 
 
 ### Arbre simplifié
+
+Nous allons simplifier l'arbre pour éviter le sur-apprentissage.
+
 
 ```{r}
 tree2 <- rpart(diagnosis~.,train_data,control=rpart.control(minsplit=5))
 rpart.plot(tree2, type=4, digits=3)
 ```
 
+### Prédiction et performance du modèle simplifié
+
+```{r}
+pred_cart <- predict(tree2, newdata=test_data, type="prob")
+pred_cart_qual <- ifelse(pred_cart[,2] > 0.5, "M", "B")
+table(pred_cart_qual, test_data$diagnosis)
+```
+
+```{r}
+cart_accuracy <- mean(pred_cart_qual == test_data$diagnosis) # accuracy
+cart_accuracy
+```
+```{r}
+roc_cart <- roc(test_data$diagnosis, pred_cart[,2])
+plot(roc_cart, col = "red", AUC = TRUE, main = "Courbe ROC CART")
+```
+
+```{r}
+auc_cart <- auc(roc_cart)
+auc_cart
+```
+Cela n'a pas amélioré le modèle. Nous allons essayer de faire de l'élagage.
+
 
 ### Elagage des arbres
 
-Nous allons élaguer l'arbre pour éviter le sur-apprentissage.
+Nous allons élaguer l'arbre pour éviter le sur-apprentissage. 
+
 
 ```{r}
 tree_elag <- rpart(diagnosis~.,train_data,control=rpart.control(minsplit=5,cp=0))
@@ -287,7 +336,7 @@ rpart.plot(tree_elag, type=4)
 ```{r}
 plotcp(tree_elag)
 ```
-On observe une erreur minimale pour arbre de taille 4 ou 7. 
+On observe une erreur minimale pour arbre de taille entre 4 et 7. 
 
 ```{r}
 cp.opt <- tree_elag$cptable[which.min(tree_elag$cptable[, "xerror"]), "CP"]
@@ -307,19 +356,19 @@ table(pred_cart_opti_qual, test_data$diagnosis)
 ### Performance du modèle
 
 ```{r}
-cart_accuracy <- mean(pred_cart_opti_qual == test_data$diagnosis) # accuracy
-cart_accuracy
+cart_opti_accuracy <- mean(pred_cart_opti_qual == test_data$diagnosis) # accuracy
+cart_opti_accuracy
 ```
-Pour le modèle CART optimal, on obtient une accuracy de 0.91, ce qui est plutôt bon.
+Pour le modèle CART optimal, on obtient une accuracy de 0.91, ce qui est meilleur que les version précédentes de CART. 
 
 ```{r}
-roc_cart <- roc(test_data$diagnosis, pred_cart_opti[,2])
-plot(roc_cart)
+roc_cart_opti <- roc(test_data$diagnosis, pred_cart_opti[,2])
+plot(roc_cart_opti, col = "red", AUC = TRUE, main = "Courbe ROC CART optimal")
 ```
 
 ```{r}
-auc_cart <- auc(roc_cart)
-auc_cart
+auc_cart_opti <- auc(roc_cart_opti)
+auc_cart_opti
 ```
 On obtient une AUC de 0.8788, ce qui est moins bon que les modèles précédents.
 
@@ -652,9 +701,15 @@ library("pROC")
 ### Calcul des courbes ROC
 
 ```{r}
-roc_list <- list(roc_afd, roc_lda, roc_lda_simple, roc_qda, roc_qda_simple, roc_glm, roc_ridge, roc_lasso, roc_rf, roc_rf_balanced, roc_svm_lin, roc_svm_rbf)
-legends_list <- c("AFD", "LDA", "LDA simple", "QDA", "QDA simple", "GLM", "Ridge", "Lasso", "RF", "RF.balanced", "SVM lin", "SVM rbf")
+roc_list <- list(roc_afd, roc_lda, roc_lda_simple, roc_qda, roc_qda_simple, roc_glm, roc_ridge, roc_lasso, roc_rf, roc_rf_balanced, roc_svm_lin, roc_svm_rbf, roc_cart_naive, roc_cart, roc_cart_opti)
 ```
+
+```{r}
+legends_list <- c("AFD", "LDA", "LDA simple", "QDA", "QDA simple", "GLM", "Ridge", "Lasso", "RF", "RF.balanced", "SVM lin", "SVM rbf", "CART naive", "CART", "CART opti")
+```
+
+
+
 
 ### Affichage des courbes ROC
 
@@ -666,7 +721,7 @@ for (i in roc_list) {
   plot(i, add = TRUE, col = cols[j], label = legends_list[j])
   j <- j + 1
 }
-legend("bottomright", legend = legends_list, col = cols, lty = 1, cex = 0.8)
+legend("bottomright", legend = legends_list, col = cols, lty = 1, cex = 0.7)
 
 ```
 
@@ -678,7 +733,6 @@ legend("bottomright", legend = legends_list, col = cols, lty = 1, cex = 0.8)
 
 ```{r}
 df.auc <- data.frame(model = legends_list, auc = sapply(roc_list, function(x) auc(x)))
-
 df.auc
 ```
 
@@ -694,18 +748,42 @@ barplot(df.auc$auc, names.arg = df.auc$model, col = rainbow(length(df.auc$auc)),
 
 
 ```{r}
-# AUC sorted 
 df.auc_sorted <- df.auc[order(df.auc$auc, decreasing = TRUE),]
 barplot(df.auc_sorted$auc, names.arg = df.auc_sorted$model, col = rainbow(length(df.auc_sorted$auc)), main = "AUC des modèles",xlim = c(0,1), xlab = "Modèles", cex.names = 0.7, horiz = TRUE, las = 1)
 ```
 
-On obtient que le meilleur modèle relativement à l'AUC trouvé est le SVM avec noyau RBF (non-linéaire). Le meilleur modèle trouvé que l'on a vu dans ce cours est le modèle de régression logistique avec pénalisation de Ridge, avec une AUC de 0.981. De plus, le troisième meilleur modèle, à savoir la régression Lasso, a une AUC assez proche de celle de la régression Ridge, tout en dépendant de moins de variables. 
+```{r}
+boxplot(df.auc$auc, main = "Boxplot des AUC des modèles", ylab = "AUC", col = "cyan")
+```
+```{r}
+summary(df.auc$auc)
+```
+
+
+On obtient que le *meilleur modèle* relativement à l'AUC trouvé est le SVM avec noyau RBF (non-linéaire). Le meilleur modèle trouvé que l'on a vu dans ce cours est le modèle de régression logistique avec pénalisation de Ridge, avec une AUC de 0.981. De plus, le troisième meilleur modèle, à savoir la régression Lasso, a une AUC assez proche de celle de la régression Ridge, tout en dépendant de moins de variables. 
+
+Les *modèles les moins bons* sont les modèles CART, qui ont des AUC inférieures à 0.9, et de régression logistique non pénalisée, qui ont des performances très inférieures aux autres. 
+
+
+```{r}
+# Courbes ROC des 5 meilleurs modèles 
+
+plot(roc_ridge, col = "red", AUC = TRUE, main = "Courbes ROC des 5 meilleurs modèles")
+plot(roc_lasso, col = "blue", AUC = TRUE, add = TRUE)
+plot(roc_svm_rbf, col = "green", AUC = TRUE, add = TRUE)
+plot(roc_rf_balanced, col = "purple", AUC = TRUE, add = TRUE)
+plot(roc_afd, col = "orange", AUC = TRUE, add = TRUE)
+legend("bottomright", legend = c("Ridge", "Lasso", "SVM RBF", "RF balanced", "AFD"), col = c("red", "blue", "green", "purple", "orange"), lty = 1, cex = 0.7)
+
+```
+
 
 ### Comparaison de l'accuarcy des modèles
 
 ```{r}
-df_accuracy <- data.frame(model = c("AFD", "LDA", "LDA simple", "QDA", "QDA simple", "GLM", "Ridge", "Lasso", "RF", "RF balanced", "SVM lin", "SVM rbf"), accuracy = c(afd_accuracy, lda_accuracy, lda_simple_accuracy, qda_accuracy, qda_simple_accuracy, glm_accuracy, ridge_accuracy, lasso_accuracy, rf_accuracy, rf_accuracy_balanced, svm_lin_accuracy, svm_rbf_accuracy))
+df_accuracy <- data.frame(model = c("AFD", "LDA", "LDA simple", "QDA", "QDA simple", "GLM", "Ridge", "Lasso", "RF", "RF balanced", "SVM lin", "SVM rbf", "CART naive", "CART", "CART opti"), accuracy = c(afd_accuracy, lda_accuracy, lda_simple_accuracy, qda_accuracy, qda_simple_accuracy, glm_accuracy, ridge_accuracy, lasso_accuracy, rf_accuracy, rf_accuracy_balanced, svm_lin_accuracy, svm_rbf_accuracy, cart_naive_accuracy, cart_accuracy, cart_opti_accuracy))
 ```
+
 
 ```{r}
 df_accuracy
@@ -726,9 +804,19 @@ df_accuracy_sorted <- df_accuracy[order(df_accuracy$accuracy, decreasing = TRUE)
 barplot(df_accuracy_sorted$accuracy, names.arg = df_accuracy_sorted$model, col = rainbow(length(df_accuracy_sorted$accuracy)), main = "Accuracy des modèles", xlab = "Modèles", cex.names = 0.7, horiz = TRUE, las = 1)
 ```
 
-Les modèles avec les meilleures accuracy sont les modèles de QDA, de régression logistique avec pénalisation de Ridge et de régression Lasso. Comme la QDA n'est pas dans les meilleurs modèles en terme d'AUC, on peut dire que les modèles de régression logistique avec pénalisation de Ridge et de régression Lasso sont les meilleurs modèles de statistiques prédictives que l'on a trouvé.
+```{r}
+boxplot(df_accuracy$accuracy, main = "Boxplot des accuracy des modèles", ylab = "Accuracy", col = "blue")
+```
 
-Le modèle qui a le moins fonctionné est le modèle de régression logistique sans pénalisation. En effet, lorsque nous lancions l'analyse, nous obtenions des warnings ce qui signifiait que le modèle n'était pas bien calibré. 
+
+```{r}
+summary(df_accuracy$accuracy)
+```
+
+
+* Meilleurs Modèles* : Les modèles avec les meilleures accuracy sont les modèles de QDA, de régression logistique avec pénalisation de Ridge et de régression Lasso. Comme la QDA n'est pas dans les meilleurs modèles en terme d'AUC, on peut dire que les modèles de régression logistique avec pénalisation de Ridge et de régression Lasso sont les meilleurs modèles de statistiques prédictives que l'on a trouvé. Une très bonne accuracy pour la QDA peut être un signe de sur-apprentissage.
+
+* Modèles moins efficaces* : Le modèle qui a le moins fonctionné est le modèle de régression logistique sans pénalisation. En effet, lorsque nous lancions l'analyse, nous obtenions des warnings ce qui signifiait que le modèle n'était pas bien calibré. Le modèle CART a également eu des performances moins intéressantes que l'on a pu observer avec son accuracy plus basse que les autres, tout comme le LDA. 
 
 ### Interprétation des résultats
 
@@ -736,7 +824,7 @@ Les modèles de régression logistique avec pénalisation de Ridge et de régres
 
 Le modèle de SVM avec noyau RBF est le meilleur modèle en terme d'AUC, mais il n'est pas le meilleur en terme d'accuracy.
 
-Le modèle de régression logistique sans pénalisation est le moins bon modèle que l'on a trouvé. En effet, il n'était pas bien calibré. 
+Le modèle de régression logistique sans pénalisation et le modèle CART sont les moins bons modèles que l'on a testés Cela peut s'expliquer par une mauvaise calibration pour le modèle de régression logistique. 
 
 # Conclusion
 
