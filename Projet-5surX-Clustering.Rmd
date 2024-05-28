@@ -1,0 +1,24 @@
+---
+title: "Untitled"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Lecture des données nettoyées 
+
+## Importation du dataset 
+
+```{r}
+data <- read.csv("data/data_cleaned.csv", header = TRUE, sep = ",")
+data$diagnosis <- as.factor(data$diagnosis)
+```
+
+# Clustering
+
+```{r}
+library(FactoMineR)
+```
+
