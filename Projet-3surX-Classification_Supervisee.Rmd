@@ -187,9 +187,74 @@ qda_simple_accuracy
 ```
 
 
-## CART 
+## CART
 
-[A FAIRE]
+```{r}
+library(rpart.plot)
+library(rpart)
+```
+
+### Lancement du modèle
+
+```{r}
+tree <- rpart(diagnosis~., train_data)
+```
+
+
+```{r}
+print(tree)
+```
+
+
+### Visualisation de l'arbre
+
+
+```{r}
+rpart.plot(tree, type=4, digits=3,roundint=FALSE)
+```
+
+```{r}
+tree2 <- rpart(diagnosis~.,train_data,control=rpart.control(minsplit=5))
+rpart.plot(tree2, type=4, digits=3)
+```
+
+
+### Elagage des arbres
+
+Nous allons élaguer l'arbre pour éviter le sur-apprentissage.
+
+```{r}
+tree_elag <- rpart(diagnosis~.,train_data,control=rpart.control(minsplit=5,cp=0))
+rpart.plot(tree_elag, type=4)
+```
+
+```{r}
+plotcp(tree_elag)
+```
+On observe une erreur minimale pour arbre de taille 4 ou 7. 
+
+```{r}
+cp.opt <- tree_elag$cptable[which.min(tree_elag$cptable[, "xerror"]), "CP"]
+tree.opt <- prune(tree_elag,cp=cp.opt)
+rpart.plot(tree.opt, type=4)
+```
+
+### Prediction
+
+```{r}
+pred_cart_opti <- predict(tree.opt, newdata=test_data, type="prob")
+pred_cart_opti_qual <- ifelse(pred_cart_opti[,2] > 0.5, "M", "B")
+table(pred_cart_opti_qual, test_data$diagnosis)
+
+```
+
+### Performance du modèle
+
+```{r}
+cart_accuracy <- mean(pred_cart_opti_qual == test_data$diagnosis) # accuracy
+cart_accuracy
+```
+Pour le modèle CART optimal, on obtient une accuracy de 0.90, ce qui est plutôt bon.
 
 ## Random Forest
 
@@ -482,16 +547,23 @@ df.auc
 barplot(df.auc$auc, names.arg = df.auc$model, col = rainbow(length(df.auc$auc)), main = "AUC des modèles", xlab = "Modèles", xlim = c(0,1), cex.names = 0.7, horiz = TRUE, las = 1)
 ```
 
+
 ```{r}
 # AUC sorted 
 df.auc_sorted <- df.auc[order(df.auc$auc, decreasing = TRUE),]
 barplot(df.auc_sorted$auc, names.arg = df.auc_sorted$model, col = rainbow(length(df.auc_sorted$auc)), main = "AUC des modèles",xlim = c(0,1), xlab = "Modèles", cex.names = 0.7, horiz = TRUE, las = 1)
 ```
 
+On obtient que le meilleur modèle relativement à l'AUC trouvé est le SVM avec noyau RBF (non-linéaire). Le meilleur modèle trouvé que l'on a vu dans ce cours est le modèle de régression logistique avec pénalisation de Ridge, avec une AUC de 0.981. De plus, le troisième meilleur modèle, à savoir la régression Lasso, a une AUC assez proche de celle de la régression Ridge, tout en dépendant de moins de variables. 
+
 ### Comparaison de l'accuarcy des modèles
 
 ```{r}
 df_accuracy <- data.frame(model = c("AFD", "LDA", "LDA simple", "QDA", "QDA simple", "GLM", "Ridge", "Lasso", "RF", "RF balanced", "SVM lin", "SVM rbf"), accuracy = c(afd_accuracy, lda_accuracy, lda_simple_accuracy, qda_accuracy, qda_simple_accuracy, glm_accuracy, ridge_accuracy, lasso_accuracy, rf_accuracy, rf_accuracy_balanced, svm_lin_accuracy, svm_rbf_accuracy))
+```
+
+```{r}
+df_accuracy
 ```
 
 
@@ -504,9 +576,18 @@ df_accuracy_sorted <- df_accuracy[order(df_accuracy$accuracy, decreasing = TRUE)
 barplot(df_accuracy_sorted$accuracy, names.arg = df_accuracy_sorted$model, col = rainbow(length(df_accuracy_sorted$accuracy)), main = "Accuracy des modèles", xlab = "Modèles", cex.names = 0.7, horiz = TRUE, las = 1)
 ```
 
+Les modèles avec les meilleures accuracy sont les modèles de QDA, de régression logistique avec pénalisation de Ridge et de régression Lasso. Comme la QDA n'est pas dans les meilleurs modèles en terme d'AUC, on peut dire que les modèles de régression logistique avec pénalisation de Ridge et de régression Lasso sont les meilleurs modèles de statistiques prédictives que l'on a trouvé.
+
+Le modèle qui a le moins fonctionné est le modèle de régression logistique sans pénalisation. En effet, lorsque nous lancions l'analyse, nous obtenions des warnings ce qui signifiait que le modèle n'était pas bien calibré. 
+
 ### Interprétation des résultats
 
-(AF)
+Les modèles de régression logistique avec pénalisation de Ridge et de régression Lasso sont les meilleurs modèles de statistiques prédictives que l'on a trouvé. En effet, ils ont les meilleures AUC et les meilleures accuracy. De plus, le modèle de régression Lasso dépend de moins de variables que le modèle de régression Ridge, ce qui peut être un avantage. 
+
+Le modèle de SVM avec noyau RBF est le meilleur modèle en terme d'AUC, mais il n'est pas le meilleur en terme d'accuracy.
+
+Le modèle de régression logistique sans pénalisation est le moins bon modèle que l'on a trouvé. En effet, il n'était pas bien calibré. 
 
 # Conclusion
 
+Le data-set est exploitable en machine learning, et nous avons pu obtenir des modèles de statistiques prédictives qui ont de bonnes performances. Les modèles de régression logistique avec pénalisation de Ridge et de régression Lasso sont les meilleurs modèles que l'on a trouvé. Ces modèles pourraient permettre de prédire le diagnostic de patientes atteintes de cancer du sein, dans une certaine mesure.
