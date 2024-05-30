@@ -960,6 +960,67 @@ summary(df_accuracy$accuracy)
 
 * Modèles moins efficaces* : Le modèle qui a le moins fonctionné est le modèle de régression logistique sans pénalisation. En effet, lorsque nous lancions l'analyse, nous obtenions des warnings ce qui signifiait que le modèle n'était pas bien calibré. Le modèle CART a également eu des performances moins intéressantes que l'on a pu observer avec son accuracy plus basse que les autres, tout comme le LDA. 
 
+### Analyse des faux positifs et des faux négatifs
+
+```{r}
+list_pred <- list(pred_afd$class, pred_lda$class, pred_lda_simple$class, pred_qda$class, pred_qda_simple$class, pred_glm_qual, pred_ridge_qual, pred_lasso_qual, pred_rf_fact, pred_rf_fact_balanced, pred_svm_lin, pred_svm_rbf, pred_cart_opti_qual, pred_cart_qual, pred_cart_opti_qual, pred_ada_qual, pred_ada_cv_adadist_qual, pred_ada_cv_berndist_qual)
+```
+
+```{r}
+length(list_pred)
+```
+
+
+```{r}
+confu_afd <- table(pred_afd$class, test_data$diagnosis)
+confu_lda <- table(pred_lda$class, test_data$diagnosis)
+confu_lda_simple <- table(pred_lda_simple$class, test_data$diagnosis)
+confu_qda <- table(pred_qda$class, test_data$diagnosis)
+confu_qda_simple <- table(pred_qda_simple$class, test_data$diagnosis)
+confu_glm <- table(pred_glm_qual, test_data$diagnosis)
+confu_ridge <- table(pred_ridge_qual, test_data$diagnosis)
+confu_lasso <- table(pred_lasso_qual, test_data$diagnosis)
+confu_rf <- table(pred_rf_fact, test_data$diagnosis)
+confu_rf_balanced <- table(pred_rf_fact_balanced, test_data$diagnosis)
+confu_svm_lin <- table(pred_svm_lin, test_data$diagnosis)
+confu_svm_rbf <- table(pred_svm_rbf, test_data$diagnosis)
+confu_cart_naive <- table(pred_cart_naive_qual, test_data$diagnosis)
+confu_cart <- table(pred_cart_qual, test_data$diagnosis)
+confu_cart_opti <- table(pred_cart_opti_qual, test_data$diagnosis)
+confu_ada <- table(pred_ada_qual, test_data$diagnosis)
+confu_ada_cv_adadist <- table(pred_ada_cv_adadist_qual, test_data$diagnosis)
+confu_ada_cv_berndist <- table(pred_ada_cv_berndist_qual, test_data$diagnosis)
+```
+
+```{r}
+# Dataframe avec les TP, TN, FP, FN
+df_confu <- data.frame(
+  model = c("AFD", "LDA", "LDA simple", "QDA", "QDA simple", "GLM", "Ridge", "Lasso", "RF", "RF.bal", "SVM lin", "SVM rbf", "CART naive", "CART", "CART opti", "ADABoost", "ADA.cv.ada", "ADA.cv.ber"), 
+  TP = c(confu_afd[2,2], confu_lda[2,2], confu_lda_simple[2,2], confu_qda[2,2], confu_qda_simple[2,2], confu_glm[2,2], confu_ridge[2,2], confu_lasso[2,2], confu_rf[2,2], confu_rf_balanced[2,2], confu_svm_lin[2,2], confu_svm_rbf[2,2], confu_cart_naive[2,2], confu_cart[2,2], confu_cart_opti[2,2], confu_ada[2,2], confu_ada_cv_adadist[2,2], confu_ada_cv_berndist[2,2]), 
+  TN = c(confu_afd[1,1], confu_lda[1,1], confu_lda_simple[1,1], confu_qda[1,1], confu_qda_simple[1,1], confu_glm[1,1], confu_ridge[1,1], confu_lasso[1,1], confu_rf[1,1], confu_rf_balanced[1,1], confu_svm_lin[1,1], confu_svm_rbf[1,1], confu_cart_naive[1,1], confu_cart[1,1], confu_cart_opti[1,1], confu_ada[1,1], confu_ada_cv_adadist[1,1], confu_ada_cv_berndist[1,1]), 
+  FP = c(confu_afd[2,1], confu_lda[2,1], confu_lda_simple[2,1], confu_qda[2,1], confu_qda_simple[2,1], confu_glm[2,1], confu_ridge[2,1], confu_lasso[2,1], confu_rf[2,1], confu_rf_balanced[2,1], confu_svm_lin[2,1], confu_svm_rbf[2,1], confu_cart_naive[2,1], confu_cart[2,1], confu_cart_opti[2,1], confu_ada[2,1], confu_ada_cv_adadist[2,1], confu_ada_cv_berndist[2,1]),
+  FN = c(confu_afd[1,2], confu_lda[1,2], confu_lda_simple[1,2], confu_qda[1,2], confu_qda_simple[1,2], confu_glm[1,2], confu_ridge[1,2], confu_lasso[1,2], confu_rf[1,2], confu_rf_balanced[1,2], confu_svm_lin[1,2], confu_svm_rbf[1,2], confu_cart_naive[1,2], confu_cart[1,2], confu_cart_opti[1,2], confu_ada[1,2], confu_ada_cv_adadist[1,2], confu_ada_cv_berndist[1,2])
+)
+
+# Calcul des taux
+df_confu$TPR <- df_confu$TP / (df_confu$TP + df_confu$FN)
+df_confu$FPR <- df_confu$FP / (df_confu$FP + df_confu$TN)
+df_confu$TNR <- df_confu$TN / (df_confu$TN + df_confu$FP)
+df_confu$FNR <- df_confu$FN / (df_confu$TP + df_confu$FN)
+df_confu$FDR <- df_confu$FP / (df_confu$FP + df_confu$TP)
+df_confu$ACC <- (df_confu$TP + df_confu$TN) / (df_confu$TP + df_confu$TN + df_confu$FP + df_confu$FN)
+df_confu$F1 <- 2 * (df_confu$TPR * df_confu$FDR) / (df_confu$TPR + df_confu$FDR)
+df_confu$AUC <- df.auc$auc
+
+```
+
+```{r}
+boxplot(df_confu[-c(1,2,3,4,5)], col = rainbow(12), main = "Boxplot des taux des modèles", ylab = "Taux", las = 2)
+```
+
+
+
+
 ### DataFrame du récapitulatif
 
 ```{r}
